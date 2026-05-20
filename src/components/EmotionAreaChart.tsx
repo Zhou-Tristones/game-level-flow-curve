@@ -15,17 +15,17 @@ import { EVENT_COLORS, EVENT_LABEL_COLORS } from '../constants';
 
 interface EmotionAreaChartProps {
   chart: ChartInstance;
-  height?: number;
+  height?: number | string;
 }
 
-export default function EmotionAreaChart({ chart, height = 280 }: EmotionAreaChartProps) {
+export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaChartProps) {
   const points = useMemo(() => calculateCurvePoints(chart.events), [chart.events]);
   const referenceAreas = useMemo(() => calculateReferenceAreas(chart.events), [chart.events]);
 
   const totalDuration = useMemo(() => getTotalDuration(chart.events), [chart.events]);
 
   return (
-    <div className="flex items-stretch">
+    <div className="flex items-stretch h-full min-h-0">
       {/* 竖排 Y 轴标签 */}
       <div className="flex flex-col justify-center items-center px-0.5 py-2 shrink-0 select-none w-4">
         {chart.yAxisName.split('').map((char, i) => (
@@ -61,7 +61,7 @@ export default function EmotionAreaChart({ chart, height = 280 }: EmotionAreaCha
               tick={{ fontSize: 10, fill: '#94a3b8' }}
               tickLine={false}
               axisLine={{ stroke: '#334155' }}
-              label={height > 200 ? { value: '时间 (分钟)', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 } : undefined}
+              label={typeof height === 'number' && height > 200 ? { value: '时间 (分钟)', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 } : undefined}
             />
             <YAxis
               domain={[0, 10]}
@@ -71,7 +71,7 @@ export default function EmotionAreaChart({ chart, height = 280 }: EmotionAreaCha
               axisLine={{ stroke: '#334155' }}
               width={30}
             />
-            {height > 200 && (
+            {typeof height === 'number' && height > 200 && (
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#1e293b',

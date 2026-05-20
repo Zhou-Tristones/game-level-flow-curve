@@ -26,14 +26,14 @@ export default function ChartCard({
   return (
     <div
       onClick={onSelect}
-      className={`rounded-xl border-2 overflow-hidden transition-all cursor-pointer ${
+      className={`flex flex-col rounded-xl border-2 overflow-hidden transition-all cursor-pointer flex-1 min-h-0 ${
         isSelected
           ? 'border-purple-500 bg-slate-900 shadow-lg shadow-purple-500/10'
           : 'border-slate-800 bg-slate-900/70 hover:border-slate-600'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5">
+      <div className="flex items-center justify-between px-4 py-2 shrink-0">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-white truncate">{chart.title}</h3>
           <p className="text-[11px] text-slate-500 mt-0.5">
@@ -61,8 +61,9 @@ export default function ChartCard({
         </div>
       </div>
 
-      {/* Chart preview */}
-      <EmotionAreaChart chart={chart} height={160} />
+      <div className="flex-1 min-h-0">
+        <EmotionAreaChart chart={chart} height="100%" />
+      </div>
     </div>
   );
 }

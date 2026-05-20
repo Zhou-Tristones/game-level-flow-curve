@@ -12,7 +12,7 @@ export default function App() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：三个预设图表 */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
           {m.charts.map((chart) => (
             <ChartCard
               key={chart.id}
