@@ -4,21 +4,27 @@ import EventTable from './EventTable';
 interface EditingPanelProps {
   chart: ChartInstance;
   isOverLimit: boolean;
-  totalDuration: number;
+  durationDisplay: string;
+  hasEventClipboard: boolean;
   onUpdateChartMeta: (chartId: string, field: 'title' | 'yAxisName', value: string) => void;
   onUpdateEvent: (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => void;
   onRemoveEvent: (chartId: string, eventId: string) => void;
   onAddEvent: (chartId: string) => void;
+  onCopyEvent: (chartId: string, eventId: string) => void;
+  onPasteEvent: (chartId: string, targetEventId?: string) => void;
 }
 
 export default function EditingPanel({
   chart,
   isOverLimit,
-  totalDuration,
+  durationDisplay,
+  hasEventClipboard,
   onUpdateChartMeta,
   onUpdateEvent,
   onRemoveEvent,
   onAddEvent,
+  onCopyEvent,
+  onPasteEvent,
 }: EditingPanelProps) {
   return (
     <div className="space-y-4">
@@ -47,10 +53,13 @@ export default function EditingPanel({
         chartId={chart.id}
         events={chart.events}
         isOverLimit={isOverLimit}
-        totalDuration={totalDuration}
+        durationDisplay={durationDisplay}
+        hasEventClipboard={hasEventClipboard}
         onUpdateEvent={onUpdateEvent}
         onRemoveEvent={onRemoveEvent}
         onAddEvent={onAddEvent}
+        onCopyEvent={onCopyEvent}
+        onPasteEvent={onPasteEvent}
       />
     </div>
   );

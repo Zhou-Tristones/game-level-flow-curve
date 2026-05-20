@@ -9,7 +9,7 @@ interface ChartCardProps {
   onSelect: () => void;
   onCopy: () => void;
   onPaste: () => void;
-  totalDuration: number;
+  durationDisplay: string;
   isOverLimit: boolean;
 }
 
@@ -20,7 +20,7 @@ export default function ChartCard({
   onSelect,
   onCopy,
   onPaste,
-  totalDuration,
+  durationDisplay,
   isOverLimit,
 }: ChartCardProps) {
   return (
@@ -37,7 +37,7 @@ export default function ChartCard({
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-white truncate">{chart.title}</h3>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {chart.yAxisName} · {chart.events.length} 事件 · {totalDuration}分
+            {chart.yAxisName} · {chart.events.length} 事件 · {durationDisplay}
             {isOverLimit && <span className="text-red-400 ml-1">超限</span>}
           </p>
         </div>

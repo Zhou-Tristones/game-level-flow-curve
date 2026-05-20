@@ -1,4 +1,5 @@
 import { useChartManager } from './hooks/useChartManager';
+import { formatTotalDuration } from './utils/curveData';
 import TopBar from './components/TopBar';
 import ChartCard from './components/ChartCard';
 import EditingPanel from './components/EditingPanel';
@@ -8,7 +9,7 @@ export default function App() {
 
   return (
     <div className="h-screen bg-slate-950 text-white flex flex-col overflow-hidden">
-      <TopBar clipboard={!!m.clipboard} />
+      <TopBar chartClipboard={!!m.clipboard} eventClipboard={!!m.eventClipboard} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：三个预设图表 */}
@@ -22,22 +23,25 @@ export default function App() {
               onSelect={() => m.selectChart(chart.id)}
               onCopy={() => m.copyEvents(chart.id)}
               onPaste={() => m.pasteEvents(chart.id)}
-              totalDuration={m.getDuration(chart.id)}
+              durationDisplay={formatTotalDuration(chart.events)}
               isOverLimit={m.isOverLimit(chart.id)}
             />
           ))}
         </div>
 
         {/* 右侧：事件编辑面板 */}
-        <div className="w-80 shrink-0 border-l border-slate-800 bg-slate-900/50 overflow-y-auto p-4">
+        <div className="w-[420px] shrink-0 border-l border-slate-800 bg-slate-900/50 overflow-y-auto p-4">
           <EditingPanel
             chart={m.selectedChart}
             isOverLimit={m.isOverLimit(m.selectedChartId)}
-            totalDuration={m.getDuration(m.selectedChartId)}
+            durationDisplay={formatTotalDuration(m.selectedChart.events)}
+            hasEventClipboard={!!m.eventClipboard}
             onUpdateChartMeta={m.updateChartMeta}
             onUpdateEvent={m.updateEvent}
             onRemoveEvent={m.removeEvent}
             onAddEvent={m.addEvent}
+            onCopyEvent={m.copyEvent}
+            onPasteEvent={m.pasteEvent}
           />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { GameEvent, DurationUnit } from '../types';
+import { Plus, Trash2, Copy, ClipboardPaste } from 'lucide-react';
+import { GameEvent } from '../types';
 import { COLOR_PRESETS } from '../constants';
 
 function ColorSelect({ value, onChange }: { value: string | undefined; onChange: (c: string) => void }) {
@@ -50,32 +50,33 @@ interface EventTableProps {
   chartId: string;
   events: GameEvent[];
   isOverLimit: boolean;
-  totalDuration: number;
+  durationDisplay: string;
+  hasEventClipboard: boolean;
   onUpdateEvent: (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => void;
   onRemoveEvent: (chartId: string, eventId: string) => void;
   onAddEvent: (chartId: string) => void;
+  onCopyEvent: (chartId: string, eventId: string) => void;
+  onPasteEvent: (chartId: string, targetEventId?: string) => void;
 }
-
-const UNIT_OPTIONS: { value: DurationUnit; label: string }[] = [
-  { value: 's', label: '秒' },
-  { value: 'm', label: '分' },
-];
 
 export default function EventTable({
   chartId,
   events,
   isOverLimit,
-  totalDuration,
+  durationDisplay,
+  hasEventClipboard,
   onUpdateEvent,
   onRemoveEvent,
   onAddEvent,
+  onCopyEvent,
+  onPasteEvent,
 }: EventTableProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-slate-300">事件列表</h3>
         <span className={`text-xs ${isOverLimit ? 'text-red-400' : 'text-slate-500'}`}>
-          总时长: {totalDuration} / 30
+          总时长: {durationDisplay} / 30分钟
         </span>
       </div>
 
@@ -84,7 +85,7 @@ export default function EventTable({
           const defaultEnd = event.endValue === undefined;
           return (
             <div key={event.id} className="bg-slate-800/50 rounded-lg p-3 space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-xs text-slate-500 w-4">{index + 1}</span>
                 <input
                   type="text"
@@ -94,6 +95,22 @@ export default function EventTable({
                   placeholder="事件名"
                 />
                 <button
+                  onClick={() => onCopyEvent(chartId, event.id)}
+                  className="p-1 rounded text-slate-500 hover:text-purple-400 hover:bg-slate-800 transition-colors"
+                  title="复制此事件"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+                {hasEventClipboard && (
+                  <button
+                    onClick={() => onPasteEvent(chartId, event.id)}
+                    className="p-1 rounded text-slate-500 hover:text-purple-400 hover:bg-slate-800 transition-colors"
+                    title="粘贴覆盖此事件"
+                  >
+                    <ClipboardPaste className="w-3 h-3" />
+                  </button>
+                )}
+                <button
                   onClick={() => onRemoveEvent(chartId, event.id)}
                   disabled={events.length <= 1}
                   className={`p-1 rounded transition-colors ${
@@ -102,30 +119,33 @@ export default function EventTable({
                       : 'text-slate-500 hover:text-red-400 hover:bg-slate-800'
                   }`}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex gap-1 items-center">
+                <div className="flex gap-0.5 items-center text-xs">
                   <input
                     type="number"
-                    min={1}
-                    value={event.duration}
-                    onChange={(e) => onUpdateEvent(chartId, event.id, 'duration', e.target.value)}
-                    className={`w-12 bg-slate-800 border rounded px-1.5 py-0.5 text-white text-xs text-center focus:outline-none focus:border-purple-500 transition-colors ${
+                    min={0}
+                    value={event.durationMin}
+                    onChange={(e) => onUpdateEvent(chartId, event.id, 'durationMin', e.target.value)}
+                    className={`w-10 bg-slate-800 border rounded px-1 py-0.5 text-white text-xs text-center focus:outline-none focus:border-purple-500 transition-colors ${
                       isOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
                     }`}
                   />
-                  <select
-                    value={event.durationUnit}
-                    onChange={(e) => onUpdateEvent(chartId, event.id, 'durationUnit', e.target.value)}
-                    className="bg-slate-800 border border-slate-700 rounded px-0.5 py-0.5 text-white text-[10px] focus:outline-none focus:border-purple-500 transition-colors appearance-none cursor-pointer"
-                  >
-                    {UNIT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
+                  <span className="text-slate-500">m</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={event.durationSec}
+                    onChange={(e) => onUpdateEvent(chartId, event.id, 'durationSec', e.target.value)}
+                    className={`w-10 bg-slate-800 border rounded px-1 py-0.5 text-white text-xs text-center focus:outline-none focus:border-purple-500 transition-colors ${
+                      isOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
+                    }`}
+                  />
+                  <span className="text-slate-500">s</span>
                 </div>
 
                 <div className="flex items-center gap-1 text-xs text-slate-500">
@@ -164,13 +184,24 @@ export default function EventTable({
         })}
       </div>
 
-      <button
-        onClick={() => onAddEvent(chartId)}
-        className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors py-2 border border-dashed border-slate-700 rounded-lg hover:border-purple-500/50"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        添加事件
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() => onAddEvent(chartId)}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors py-2 border border-dashed border-slate-700 rounded-lg hover:border-purple-500/50"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          添加事件
+        </button>
+        {hasEventClipboard && (
+          <button
+            onClick={() => onPasteEvent(chartId)}
+            className="flex items-center justify-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors px-3 py-2 border border-dashed border-purple-500/50 rounded-lg hover:border-purple-500 bg-purple-500/5"
+          >
+            <ClipboardPaste className="w-3.5 h-3.5" />
+            粘贴为新事件
+          </button>
+        )}
+      </div>
     </div>
   );
 }

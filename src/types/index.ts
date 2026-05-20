@@ -1,10 +1,8 @@
-export type DurationUnit = 's' | 'm';
-
 export interface GameEvent {
   id: string;
   name: string;
-  duration: number;
-  durationUnit: DurationUnit;
+  durationMin: number;
+  durationSec: number;
   startValue: number;
   endValue?: number;
   color?: string;

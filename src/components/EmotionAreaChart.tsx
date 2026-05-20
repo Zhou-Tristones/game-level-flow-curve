@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { ChartInstance } from '../types';
-import { calculateCurvePoints, calculateReferenceAreas, getTotalDuration, hexToRgba } from '../utils/curveData';
+import { calculateCurvePoints, calculateReferenceAreas, getTotalDuration, hexToRgba, formatMinutesDisplay } from '../utils/curveData';
 import { EVENT_COLORS, EVENT_LABEL_COLORS } from '../constants';
 
 interface EmotionAreaChartProps {
@@ -23,6 +23,12 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
   const referenceAreas = useMemo(() => calculateReferenceAreas(chart.events), [chart.events]);
 
   const totalDuration = useMemo(() => getTotalDuration(chart.events), [chart.events]);
+
+  const eventTicks = useMemo(() => {
+    const xs = new Set<number>();
+    referenceAreas.forEach(area => { xs.add(area.x1); xs.add(area.x2); });
+    return Array.from(xs).sort((a, b) => a - b);
+  }, [referenceAreas]);
 
   return (
     <div className="flex items-stretch h-full min-h-0">
@@ -59,9 +65,11 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
               domain={[0, Math.max(totalDuration, 1)]}
               stroke="#475569"
               tick={{ fontSize: 10, fill: '#94a3b8' }}
+              ticks={eventTicks}
+              tickFormatter={formatMinutesDisplay}
               tickLine={false}
               axisLine={{ stroke: '#334155' }}
-              label={typeof height === 'number' && height > 200 ? { value: '时间 (分钟)', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 } : undefined}
+              label={typeof height === 'number' && height > 200 ? { value: '时间', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 } : undefined}
             />
             <YAxis
               domain={[0, 10]}
@@ -80,7 +88,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   color: '#e2e8f0',
                   fontSize: '13px',
                 }}
-                labelFormatter={(x: number) => `${x} 分钟`}
+                labelFormatter={formatMinutesDisplay}
                 formatter={(value: number) => [`${value}`, chart.yAxisName]}
               />
             )}

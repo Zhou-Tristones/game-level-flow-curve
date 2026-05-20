@@ -8,9 +8,8 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export function toMinutes(duration: number, unit: 's' | 'm'): number {
-  const raw = unit === 's' ? duration / 60 : duration;
-  return Math.round(raw * 10) / 10;
+export function toMinutes(durationMin: number, durationSec: number): number {
+  return durationMin + durationSec / 60;
 }
 
 export function calculateCurvePoints(events: GameEvent[]): CurvePoint[] {
@@ -20,7 +19,7 @@ export function calculateCurvePoints(events: GameEvent[]): CurvePoint[] {
   let currentX = 0;
 
   events.forEach((event) => {
-    const durationMin = toMinutes(event.duration, event.durationUnit);
+    const durationMin = toMinutes(event.durationMin, event.durationSec);
     const startX = currentX;
     const endX = startX + durationMin;
     const startY = event.startValue;
@@ -40,7 +39,7 @@ export function calculateReferenceAreas(events: GameEvent[]): ReferenceAreaInfo[
   let currentX = 0;
 
   events.forEach((event, index) => {
-    const durationMin = toMinutes(event.duration, event.durationUnit);
+    const durationMin = toMinutes(event.durationMin, event.durationSec);
     areas.push({
       x1: currentX,
       x2: currentX + durationMin,
@@ -56,5 +55,24 @@ export function calculateReferenceAreas(events: GameEvent[]): ReferenceAreaInfo[
 }
 
 export function getTotalDuration(events: GameEvent[]): number {
-  return events.reduce((sum, e) => sum + toMinutes(e.duration, e.durationUnit), 0);
+  return events.reduce((sum, e) => sum + toMinutes(e.durationMin, e.durationSec), 0);
+}
+
+export function formatMinutesDisplay(minutes: number): string {
+  const m = Math.floor(minutes);
+  const s = Math.round((minutes - m) * 60);
+  if (s >= 60) return `${m + 1}m`;
+  if (s === 0) return `${m}m`;
+  return `${m}m ${s}s`;
+}
+
+export function formatTotalDuration(events: GameEvent[]): string {
+  const totalSeconds = events.reduce((sum, e) => {
+    return sum + e.durationMin * 60 + e.durationSec;
+  }, 0);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  if (m === 0) return `${s}秒`;
+  if (s === 0) return `${m}分钟`;
+  return `${m}分${s}秒`;
 }
