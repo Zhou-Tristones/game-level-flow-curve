@@ -1,87 +1,142 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChartInstance, GameEvent } from '../types';
-import { createDefaultChart, generateId } from '../constants';
+import { createDefaultCharts, generateId } from '../constants';
 import { getTotalDuration } from '../utils/curveData';
 
 export interface ChartManager {
-  chart: ChartInstance;
-  totalDuration: number;
-  isOverLimit: boolean;
-  addEvent: () => void;
-  updateEvent: (eventId: string, field: keyof GameEvent, value: string | number) => void;
-  removeEvent: (eventId: string) => void;
-  updateChartMeta: (field: 'title' | 'yAxisName', value: string) => void;
+  charts: ChartInstance[];
+  selectedChartId: string;
+  selectChart: (id: string) => void;
+  selectedChart: ChartInstance;
+  clipboard: GameEvent[] | null;
+  copyEvents: (chartId: string) => void;
+  pasteEvents: (chartId: string) => void;
+  addEvent: (chartId: string) => void;
+  updateEvent: (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => void;
+  removeEvent: (chartId: string, eventId: string) => void;
+  updateChartMeta: (chartId: string, field: 'title' | 'yAxisName', value: string) => void;
+  getDuration: (chartId: string) => number;
+  isOverLimit: (chartId: string) => boolean;
 }
 
 export function useChartManager(): ChartManager {
-  const [chart, setChart] = useState<ChartInstance>(() => createDefaultChart());
+  const [charts, setCharts] = useState<ChartInstance[]>(() => createDefaultCharts());
+  const [selectedChartId, setSelectedChartId] = useState<string>(charts[0].id);
+  const [clipboard, setClipboard] = useState<GameEvent[] | null>(null);
 
-  const totalDuration = getTotalDuration(chart.events);
-  const isOverLimit = totalDuration > 30;
+  const selectedChart = charts.find(c => c.id === selectedChartId) ?? charts[0];
 
-  const addEvent = () => {
-    setChart(prev => ({
-      ...prev,
-      events: [
-        ...prev.events,
-        {
-          id: generateId(),
-          name: '新事件',
-          duration: 3,
-          durationUnit: 'm',
-          startValue: 5,
-        },
-      ],
-    }));
-  };
+  const selectChart = useCallback((id: string) => {
+    setSelectedChartId(id);
+  }, []);
 
-  const updateEvent = (eventId: string, field: keyof GameEvent, value: string | number) => {
-    setChart(prev => ({
-      ...prev,
-      events: prev.events.map(evt => {
-        if (evt.id !== eventId) return evt;
-        if (field === 'startValue' || field === 'endValue') {
-          const num = typeof value === 'string' ? parseFloat(value) : value;
-          if (isNaN(num)) return { ...evt, [field]: undefined };
-          return { ...evt, [field]: Math.max(0, Math.min(10, num)) };
-        }
-        if (field === 'color') {
-          const s = value as string;
-          return { ...evt, color: s || undefined };
-        }
-        if (field === 'duration') {
-          const num = typeof value === 'string' ? parseInt(value, 10) : value;
-          return { ...evt, duration: Math.max(1, num || 1) };
-        }
-        if (field === 'durationUnit') {
-          return { ...evt, durationUnit: value as 's' | 'm' };
-        }
-        return { ...evt, [field]: value };
-      }),
-    }));
-  };
+  const copyEvents = useCallback((chartId: string) => {
+    const chart = charts.find(c => c.id === chartId);
+    if (chart) {
+      setClipboard(chart.events.map(e => ({ ...e })));
+    }
+  }, [charts]);
 
-  const removeEvent = (eventId: string) => {
-    setChart(prev => {
-      if (prev.events.length <= 1) return prev;
+  const pasteEvents = useCallback((chartId: string) => {
+    if (!clipboard) return;
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
       return {
-        ...prev,
-        events: prev.events.filter(evt => evt.id !== eventId),
+        ...chart,
+        events: clipboard.map(e => ({ ...e, id: generateId() })),
       };
-    });
+    }));
+  }, [clipboard]);
+
+  const addEvent = (chartId: string) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return {
+        ...chart,
+        events: [
+          ...chart.events,
+          {
+            id: generateId(),
+            name: '新事件',
+            duration: 3,
+            durationUnit: 'm' as const,
+            startValue: 5,
+          },
+        ],
+      };
+    }));
   };
 
-  const updateChartMeta = (field: 'title' | 'yAxisName', value: string) => {
-    setChart(prev => ({ ...prev, [field]: value }));
+  const updateEvent = (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return {
+        ...chart,
+        events: chart.events.map(evt => {
+          if (evt.id !== eventId) return evt;
+          if (field === 'startValue' || field === 'endValue') {
+            const num = typeof value === 'string' ? parseFloat(value) : value;
+            if (isNaN(num)) return { ...evt, [field]: undefined };
+            return { ...evt, [field]: Math.max(0, Math.min(10, num)) };
+          }
+          if (field === 'color') {
+            const s = value as string;
+            return { ...evt, color: s || undefined };
+          }
+          if (field === 'duration') {
+            const num = typeof value === 'string' ? parseInt(value, 10) : value;
+            return { ...evt, duration: Math.max(1, num || 1) };
+          }
+          if (field === 'durationUnit') {
+            return { ...evt, durationUnit: value as 's' | 'm' };
+          }
+          return { ...evt, [field]: value };
+        }),
+      };
+    }));
+  };
+
+  const removeEvent = (chartId: string, eventId: string) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      if (chart.events.length <= 1) return chart;
+      return {
+        ...chart,
+        events: chart.events.filter(evt => evt.id !== eventId),
+      };
+    }));
+  };
+
+  const updateChartMeta = (chartId: string, field: 'title' | 'yAxisName', value: string) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return { ...chart, [field]: value };
+    }));
+  };
+
+  const getDuration = (chartId: string): number => {
+    const chart = charts.find(c => c.id === chartId);
+    if (!chart) return 0;
+    return getTotalDuration(chart.events);
+  };
+
+  const isOverLimit = (chartId: string): boolean => {
+    return getDuration(chartId) > 30;
   };
 
   return {
-    chart,
-    totalDuration,
-    isOverLimit,
+    charts,
+    selectedChartId,
+    selectChart,
+    selectedChart,
+    clipboard,
+    copyEvents,
+    pasteEvents,
     addEvent,
     updateEvent,
     removeEvent,
     updateChartMeta,
+    getDuration,
+    isOverLimit,
   };
 }

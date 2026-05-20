@@ -1,44 +1,68 @@
-import { ChartInstance, GameEvent } from '../types';
+import { Copy, ClipboardPaste } from 'lucide-react';
+import { ChartInstance } from '../types';
 import EmotionAreaChart from './EmotionAreaChart';
-import EditingPanel from './EditingPanel';
 
 interface ChartCardProps {
   chart: ChartInstance;
-  isOverLimit: boolean;
+  isSelected: boolean;
+  hasClipboard: boolean;
+  onSelect: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
   totalDuration: number;
-  onUpdateChartMeta: (field: 'title' | 'yAxisName', value: string) => void;
-  onUpdateEvent: (eventId: string, field: keyof GameEvent, value: string | number) => void;
-  onRemoveEvent: (eventId: string) => void;
-  onAddEvent: () => void;
+  isOverLimit: boolean;
 }
 
 export default function ChartCard({
   chart,
-  isOverLimit,
+  isSelected,
+  hasClipboard,
+  onSelect,
+  onCopy,
+  onPaste,
   totalDuration,
-  onUpdateChartMeta,
-  onUpdateEvent,
-  onRemoveEvent,
-  onAddEvent,
+  isOverLimit,
 }: ChartCardProps) {
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg shadow-black/20">
-      <div className="px-5 py-3 border-b border-slate-800/50">
-        <h2 className="text-sm font-semibold text-white">{chart.title}</h2>
-        <p className="text-xs text-slate-500 mt-0.5">{chart.yAxisName} · {chart.events.length} 个事件 · 总时长 {totalDuration} 分钟</p>
+    <div
+      onClick={onSelect}
+      className={`rounded-xl border-2 overflow-hidden transition-all cursor-pointer ${
+        isSelected
+          ? 'border-purple-500 bg-slate-900 shadow-lg shadow-purple-500/10'
+          : 'border-slate-800 bg-slate-900/70 hover:border-slate-600'
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-white truncate">{chart.title}</h3>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {chart.yAxisName} · {chart.events.length} 事件 · {totalDuration}分
+            {isOverLimit && <span className="text-red-400 ml-1">超限</span>}
+          </p>
+        </div>
+        <div className="flex gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={onCopy}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-purple-400 hover:bg-slate-800 transition-colors"
+            title="复制此图表的事件"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          {hasClipboard && (
+            <button
+              onClick={onPaste}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-purple-400 hover:bg-slate-800 transition-colors"
+              title="粘贴事件到此图表（覆盖原有事件）"
+            >
+              <ClipboardPaste className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <EmotionAreaChart chart={chart} />
-
-      <EditingPanel
-        chart={chart}
-        isOverLimit={isOverLimit}
-        totalDuration={totalDuration}
-        onUpdateChartMeta={onUpdateChartMeta}
-        onUpdateEvent={onUpdateEvent}
-        onRemoveEvent={onRemoveEvent}
-        onAddEvent={onAddEvent}
-      />
+      {/* Chart preview */}
+      <EmotionAreaChart chart={chart} height={160} />
     </div>
   );
 }
