@@ -1,24 +1,90 @@
 import { useState } from 'react';
 import { Plus, Trash2, Copy, ClipboardPaste } from 'lucide-react';
 import { GameEvent } from '../types';
-import { COLOR_PRESETS } from '../constants';
+import { COLOR_PRESETS, EVENT_COLORS } from '../constants';
 
-function ColorSelect({ value, onChange }: { value: string | undefined; onChange: (c: string) => void }) {
+function hexToRgb(hex: string) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  return '#' + [r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('');
+}
+
+function rgbToHsl(r: number, g: number, b: number) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s: number;
+  const l = (max + min) / 2;
+  if (max === min) { h = 0; s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s, l };
+}
+
+function hslToHex(h: number, s: number, l: number) {
+  h /= 360;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h * 12) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return rgbToHex(Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255));
+}
+
+function ColorSelect({ value, defaultColor, onChange }: { value: string | undefined; defaultColor: string; onChange: (c: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string>('');
+  const [showRgb, setShowRgb] = useState(false);
+
+  const current = value || defaultColor;
+
+  const openPopover = () => {
+    setEditing(value || defaultColor);
+    setShowRgb(false);
+    setOpen(true);
+  };
+
+  const commitColor = (color: string) => {
+    if (color && color !== value) {
+      onChange(color === defaultColor ? '' : color);
+    }
+  };
+
+  const closePopover = () => {
+    commitColor(editing);
+    setOpen(false);
+  };
+
+  const currentRgb = hexToRgb(editing || current);
+  const { h } = rgbToHsl(currentRgb.r, currentRgb.g, currentRgb.b);
+  const rgb = hexToRgb(editing || current);
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
-        className={`w-5 h-5 rounded-full border transition-all ${
-          value ? 'border-white/60' : 'border-slate-600 border-dashed'
+        onClick={openPopover}
+        className={`w-5 h-5 rounded-full border-2 transition-all ${
+          value ? 'border-white' : 'border-slate-600'
         }`}
-        style={{ backgroundColor: value || 'transparent' }}
+        style={{ backgroundColor: current }}
       />
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-7 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2 shadow-xl">
+          <div className="fixed inset-0 z-10" onClick={closePopover} />
+          <div className="absolute top-7 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2.5 shadow-xl w-56">
+            {/* Row 1: Presets */}
             <div className="flex gap-1.5">
               {COLOR_PRESETS.map((c) => (
                 <button
@@ -31,6 +97,84 @@ function ColorSelect({ value, onChange }: { value: string | undefined; onChange:
                 />
               ))}
             </div>
+
+            {/* Row 2: Hue slider bar */}
+            <div className="mt-2.5">
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={h}
+                onInput={(e) => {
+                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
+                  const cRgb = hexToRgb(editing || current);
+                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
+                  setEditing(hslToHex(hue, hsl.s, hsl.l));
+                }}
+                onChange={(e) => {
+                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
+                  const cRgb = hexToRgb(editing || current);
+                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
+                  const color = hslToHex(hue, hsl.s, hsl.l);
+                  setEditing(color);
+                  commitColor(color);
+                }}
+                className="w-full h-2.5 rounded-full appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md
+                  [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-800
+                  [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
+                  [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                style={{
+                  background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
+                }}
+              />
+            </div>
+
+            {/* Row 3: Expandable RGB */}
+            <button
+              onClick={() => setShowRgb(!showRgb)}
+              className="mt-2 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-300 transition-colors w-full"
+            >
+              <span className={`inline-block transition-transform ${showRgb ? 'rotate-90' : ''}`}>▶</span>
+              RGB 编辑
+            </button>
+            {showRgb && (
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className="text-[10px] text-red-400 w-2">R</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.r}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(v, rgb.g, rgb.b)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-[10px] text-green-400 w-2">G</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.g}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, v, rgb.b)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-[10px] text-blue-400 w-2">B</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.b}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, rgb.g, v)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-slate-600 ml-1 shrink-0"
+                  style={{ backgroundColor: editing || current }}
+                />
+              </div>
+            )}
+
             {value && (
               <button
                 onClick={() => { onChange(''); setOpen(false); }}
@@ -185,6 +329,7 @@ export default function EventTable({
                 <div className="flex-1" />
                 <ColorSelect
                   value={event.color}
+                  defaultColor={COLOR_PRESETS[index % EVENT_COLORS.length]}
                   onChange={(c) => onUpdateEvent(chartId, event.id, 'color', c)}
                 />
               </div>

@@ -126,7 +126,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   style={{ left: `${leftPct}%` }}
                 >
                   <span
-                    className="text-[9px] font-medium"
+                    className="text-[11px] font-medium"
                     style={{ color: area.color ? hexToRgba(area.color, 0.85) : EVENT_LABEL_COLORS[area.colorIndex] }}
                   >
                     {area.eventName}
