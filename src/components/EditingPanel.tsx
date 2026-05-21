@@ -1,4 +1,4 @@
-import { ChartInstance, GameEvent } from '../types';
+import { ChartInstance, GameEvent, SpecialMoment } from '../types';
 import EventTable from './EventTable';
 
 interface EditingPanelProps {
@@ -15,6 +15,9 @@ interface EditingPanelProps {
   onPasteEvent: (chartId: string, targetEventId?: string) => void;
   onSetTotalDurationLimit: (chartId: string, limit: number | undefined) => void;
   onSetTotalDurationToCurrent: (chartId: string) => void;
+  onAddMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  onUpdateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
+  onRemoveMoment: (chartId: string, eventId: string, momentId: string) => void;
 }
 
 export default function EditingPanel({
@@ -31,6 +34,9 @@ export default function EditingPanel({
   onPasteEvent,
   onSetTotalDurationLimit,
   onSetTotalDurationToCurrent,
+  onAddMoment,
+  onUpdateMoment,
+  onRemoveMoment,
 }: EditingPanelProps) {
   return (
     <div className="space-y-4">
@@ -122,6 +128,9 @@ export default function EditingPanel({
         onAddEvent={onAddEvent}
         onCopyEvent={onCopyEvent}
         onPasteEvent={onPasteEvent}
+        onAddMoment={onAddMoment}
+        onUpdateMoment={onUpdateMoment}
+        onRemoveMoment={onRemoveMoment}
       />
     </div>
   );

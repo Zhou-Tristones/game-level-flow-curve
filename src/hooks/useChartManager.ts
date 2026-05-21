@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ChartInstance, GameEvent } from '../types';
+import { ChartInstance, GameEvent, SpecialMoment } from '../types';
 import { createDefaultCharts, generateId } from '../constants';
 import { getTotalDuration, getOverLimitEventIds } from '../utils/curveData';
 
@@ -25,6 +25,9 @@ export interface ChartManager {
   getDuration: (chartId: string) => number;
   isOverLimit: (chartId: string) => boolean;
   getOverLimitEventIds: (chartId: string) => Set<string>;
+  addMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  updateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
+  removeMoment: (chartId: string, eventId: string, momentId: string) => void;
 }
 
 export function useChartManager(): ChartManager {
@@ -109,6 +112,7 @@ export function useChartManager(): ChartManager {
             durationMin: 1,
             durationSec: 0,
             startValue: 5,
+            moments: [],
           },
         ],
       };
@@ -192,6 +196,67 @@ export function useChartManager(): ChartManager {
     return getOverLimitEventIds(chart.events, chart.totalDurationLimit);
   };
 
+  const addMoment = (chartId: string, eventId: string, type: 'variation' | 'climax') => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return {
+        ...chart,
+        events: chart.events.map(evt => {
+          if (evt.id !== eventId) return evt;
+          return {
+            ...evt,
+            moments: [...(evt.moments || []), {
+              id: generateId(),
+              name: type === 'variation' ? '变奏时刻' : '高潮时刻',
+              type,
+              offsetMin: 1,
+              offsetSec: 0,
+            }],
+          };
+        }),
+      };
+    }));
+  };
+
+  const updateMoment = (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return {
+        ...chart,
+        events: chart.events.map(evt => {
+          if (evt.id !== eventId) return evt;
+          return {
+            ...evt,
+            moments: (evt.moments || []).map(m => {
+              if (m.id !== momentId) return m;
+              if (field === 'offsetMin' || field === 'offsetSec') {
+                const num = typeof value === 'string' ? parseInt(value, 10) : value;
+                return { ...m, [field]: Math.max(0, Math.min(59, num || 0)) };
+              }
+              return { ...m, [field]: value };
+            }),
+          };
+        }),
+      };
+    }));
+  };
+
+  const removeMoment = (chartId: string, eventId: string, momentId: string) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return {
+        ...chart,
+        events: chart.events.map(evt => {
+          if (evt.id !== eventId) return evt;
+          return {
+            ...evt,
+            moments: (evt.moments || []).filter(m => m.id !== momentId),
+          };
+        }),
+      };
+    }));
+  };
+
   return {
     charts,
     selectedChartId,
@@ -214,5 +279,8 @@ export function useChartManager(): ChartManager {
     getDuration,
     isOverLimit,
     getOverLimitEventIds: getOverLimitIds,
+    addMoment,
+    updateMoment,
+    removeMoment,
   };
 }

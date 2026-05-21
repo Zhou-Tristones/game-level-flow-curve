@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2, Copy, ClipboardPaste } from 'lucide-react';
-import { GameEvent } from '../types';
+import { GameEvent, SpecialMoment } from '../types';
 import { COLOR_PRESETS, EVENT_COLORS } from '../constants';
 
 function hexToRgb(hex: string) {
@@ -203,6 +203,91 @@ interface EventTableProps {
   onAddEvent: (chartId: string) => void;
   onCopyEvent: (chartId: string, eventId: string) => void;
   onPasteEvent: (chartId: string, targetEventId?: string) => void;
+  onAddMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  onUpdateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
+  onRemoveMoment: (chartId: string, eventId: string, momentId: string) => void;
+}
+
+function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMoment, onAddMoment }: {
+  chartId: string;
+  eventId: string;
+  moments: SpecialMoment[];
+  onUpdateMoment: EventTableProps['onUpdateMoment'];
+  onRemoveMoment: EventTableProps['onRemoveMoment'];
+  onAddMoment: EventTableProps['onAddMoment'];
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-2 pt-2 border-t border-slate-700/50">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-300 transition-colors"
+      >
+        <span className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
+        特殊时刻 ({moments.length})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5">
+          {moments.map((m) => (
+            <div key={m.id} className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1">
+              <span className={`text-[10px] ${m.type === 'variation' ? 'text-cyan-400' : 'text-amber-400'}`}>
+                {m.type === 'variation' ? '◈' : '★'}
+              </span>
+              <input
+                type="text"
+                value={m.name}
+                onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'name', e.target.value)}
+                className="flex-1 bg-slate-800/50 border border-slate-700 rounded px-1.5 py-0.5 text-white text-[10px] focus:outline-none focus:border-purple-500 min-w-0"
+                placeholder="时刻名"
+              />
+              <div className="flex gap-0.5 items-center text-[10px]">
+                <input
+                  type="number"
+                  min={0}
+                  value={m.offsetMin}
+                  onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'offsetMin', e.target.value)}
+                  className="w-8 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-slate-500">m</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={m.offsetSec}
+                  onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'offsetSec', e.target.value)}
+                  className="w-8 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-slate-500">s</span>
+              </div>
+              <button
+                onClick={() => onRemoveMoment(chartId, eventId, m.id)}
+                className="p-0.5 rounded text-slate-500 hover:text-red-400 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <button
+              onClick={() => onAddMoment(chartId, eventId, 'variation')}
+              className="flex-1 flex items-center justify-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors py-1 border border-dashed border-slate-700 rounded hover:border-cyan-500/50"
+            >
+              + 变奏
+            </button>
+            <button
+              onClick={() => onAddMoment(chartId, eventId, 'climax')}
+              className="flex-1 flex items-center justify-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors py-1 border border-dashed border-slate-700 rounded hover:border-amber-500/50"
+            >
+              + 高潮
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EventTable({
@@ -218,6 +303,9 @@ export default function EventTable({
   onAddEvent,
   onCopyEvent,
   onPasteEvent,
+  onAddMoment,
+  onUpdateMoment,
+  onRemoveMoment,
 }: EventTableProps) {
   return (
     <div>
@@ -333,6 +421,15 @@ export default function EventTable({
                   onChange={(c) => onUpdateEvent(chartId, event.id, 'color', c)}
                 />
               </div>
+
+              <MomentEditor
+                chartId={chartId}
+                eventId={event.id}
+                moments={event.moments || []}
+                onUpdateMoment={onUpdateMoment}
+                onRemoveMoment={onRemoveMoment}
+                onAddMoment={onAddMoment}
+              />
             </div>
           );
         })}

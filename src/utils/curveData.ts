@@ -66,6 +66,46 @@ export function formatMinutesDisplay(minutes: number): string {
   return `${m}m ${s}s`;
 }
 
+export interface SpecialMomentPoint {
+  type: 'variation' | 'climax';
+  name: string;
+  x: number;
+  y: number;
+}
+
+export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMomentPoint[] {
+  const points: SpecialMomentPoint[] = [];
+  let currentX = 0;
+
+  events.forEach((event) => {
+    if (!event.moments || event.moments.length === 0) {
+      currentX += toMinutes(event.durationMin, event.durationSec);
+      return;
+    }
+
+    const eventDuration = toMinutes(event.durationMin, event.durationSec);
+    const startY = event.startValue;
+    const endY = event.endValue ?? event.startValue;
+
+    event.moments.forEach((moment) => {
+      const offset = toMinutes(moment.offsetMin, moment.offsetSec);
+      if (offset < 0 || offset > eventDuration) return;
+      const t = eventDuration > 0 ? offset / eventDuration : 0;
+      const y = startY + t * (endY - startY);
+      points.push({
+        type: moment.type,
+        name: moment.name,
+        x: currentX + offset,
+        y,
+      });
+    });
+
+    currentX += eventDuration;
+  });
+
+  return points;
+}
+
 export function getOverLimitEventIds(events: GameEvent[], limitMinutes: number): Set<string> {
   const ids = new Set<string>();
   let cumulative = 0;

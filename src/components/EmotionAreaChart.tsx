@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -7,10 +7,11 @@ import {
   YAxis,
   CartesianGrid,
   ReferenceArea,
+  ReferenceLine,
   Tooltip,
 } from 'recharts';
 import { ChartInstance } from '../types';
-import { calculateCurvePoints, calculateReferenceAreas, getTotalDuration, hexToRgba, formatMinutesDisplay } from '../utils/curveData';
+import { calculateCurvePoints, calculateReferenceAreas, getTotalDuration, calculateSpecialMomentPoints, hexToRgba, formatMinutesDisplay } from '../utils/curveData';
 import { EVENT_COLORS, EVENT_LABEL_COLORS } from '../constants';
 
 interface EmotionAreaChartProps {
@@ -21,14 +22,28 @@ interface EmotionAreaChartProps {
 export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaChartProps) {
   const points = useMemo(() => calculateCurvePoints(chart.events), [chart.events]);
   const referenceAreas = useMemo(() => calculateReferenceAreas(chart.events), [chart.events]);
-
   const totalDuration = useMemo(() => getTotalDuration(chart.events), [chart.events]);
+  const momentPoints = useMemo(() => calculateSpecialMomentPoints(chart.events), [chart.events]);
 
   const eventTicks = useMemo(() => {
     const xs = new Set<number>();
     referenceAreas.forEach(area => { xs.add(area.x1); xs.add(area.x2); });
     return Array.from(xs).sort((a, b) => a - b);
   }, [referenceAreas]);
+
+  const [hoveredMoment, setHoveredMoment] = useState<{ name: string; type: string; time: string } | null>(null);
+
+  const handleMomentEnter = useCallback((mp: typeof momentPoints[number]) => {
+    setHoveredMoment({
+      name: mp.name,
+      type: mp.type,
+      time: formatMinutesDisplay(mp.x),
+    });
+  }, []);
+
+  const handleMomentLeave = useCallback(() => {
+    setHoveredMoment(null);
+  }, []);
 
   return (
     <div className="flex items-stretch h-full min-h-0">
@@ -102,6 +117,15 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                 stroke="none"
               />
             ))}
+            {momentPoints.map((mp, i) => (
+              <ReferenceLine
+                key={`moment-line-${i}`}
+                x={mp.x}
+                stroke={mp.type === 'climax' ? '#f59e0b' : '#22d3ee'}
+                strokeDasharray={mp.type === 'climax' ? '6 2' : '4 3'}
+                strokeWidth={mp.type === 'climax' ? 1.5 : 1}
+              />
+            ))}
             <Area
               type="monotone"
               dataKey="y"
@@ -113,6 +137,50 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
             />
           </AreaChart>
         </ResponsiveContainer>
+
+        {/* X-axis moment markers + tooltips */}
+        {totalDuration > 0 && momentPoints.length > 0 && (
+          <div className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 25, height: 1 }}>
+            {momentPoints.map((mp, i) => {
+              const xMax = Math.max(totalDuration, 1);
+              const leftPct = (mp.x / xMax) * 100;
+              const isHovered = hoveredMoment?.name === mp.name && hoveredMoment?.time === formatMinutesDisplay(mp.x);
+              const isClimax = mp.type === 'climax';
+              return (
+                <div
+                  key={`moment-marker-${i}`}
+                  className="absolute pointer-events-auto"
+                  style={{ left: `${leftPct}%`, bottom: 0 }}
+                  onMouseEnter={() => handleMomentEnter(mp)}
+                  onMouseLeave={handleMomentLeave}
+                >
+                  <div className={`-translate-x-1/2 cursor-pointer ${isHovered ? 'scale-110' : ''} transition-transform`}>
+                    <div
+                      className="text-xs leading-none font-medium"
+                      style={{ color: isClimax ? '#f59e0b' : '#22d3ee' }}
+                    >
+                      {isClimax ? '★' : '◈'}
+                    </div>
+                  </div>
+                  {/* Tooltip */}
+                  {isHovered && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap z-30">
+                      <div className="flex items-center gap-1.5">
+                        <span className={isClimax ? 'text-amber-400' : 'text-cyan-400'}>
+                          {isClimax ? '★' : '◈'}
+                        </span>
+                        <span className="text-white text-xs font-medium">{mp.name}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {isClimax ? '高潮时刻' : '变奏时刻'} · {formatMinutesDisplay(mp.x)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Event name labels */}
         {totalDuration > 0 && (

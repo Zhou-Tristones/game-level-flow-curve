@@ -44,6 +44,9 @@ export default function App() {
             onPasteEvent={m.pasteEvent}
             onSetTotalDurationLimit={m.setTotalDurationLimit}
             onSetTotalDurationToCurrent={m.setTotalDurationToCurrent}
+            onAddMoment={m.addMoment}
+            onUpdateMoment={m.updateMoment}
+            onRemoveMoment={m.removeMoment}
           />
         </div>
       </div>

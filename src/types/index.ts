@@ -1,3 +1,11 @@
+export interface SpecialMoment {
+  id: string;
+  name: string;
+  type: 'variation' | 'climax';
+  offsetMin: number;
+  offsetSec: number;
+}
+
 export interface GameEvent {
   id: string;
   name: string;
@@ -6,6 +14,7 @@ export interface GameEvent {
   startValue: number;
   endValue?: number;
   color?: string;
+  moments?: SpecialMoment[];
 }
 
 export interface ChartInstance {
