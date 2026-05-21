@@ -13,6 +13,7 @@ export interface ChartInstance {
   title: string;
   yAxisName: string;
   events: GameEvent[];
+  totalDurationLimit?: number;
 }
 
 export interface CurvePoint {

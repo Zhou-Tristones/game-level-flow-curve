@@ -9,7 +9,6 @@ interface ChartCardProps {
   onSelect: () => void;
   onCopy: () => void;
   onPaste: () => void;
-  durationDisplay: string;
   isOverLimit: boolean;
 }
 
@@ -20,7 +19,6 @@ export default function ChartCard({
   onSelect,
   onCopy,
   onPaste,
-  durationDisplay,
   isOverLimit,
 }: ChartCardProps) {
   return (
@@ -33,14 +31,14 @@ export default function ChartCard({
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 shrink-0">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-white truncate">{chart.title}</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            {chart.yAxisName} · {chart.events.length} 事件 · {durationDisplay}
-            {isOverLimit && <span className="text-red-400 ml-1">超限</span>}
-          </p>
-        </div>
+      <div className="flex items-center justify-between px-4 py-1.5 shrink-0">
+        <h3 className="text-sm font-semibold text-white truncate min-w-0">
+          {chart.title}
+          <span className="font-normal text-slate-500 ml-1.5">
+            · {chart.events.length} 事件
+          </span>
+          {isOverLimit && <span className="text-red-400 ml-1.5 text-xs font-normal">超限</span>}
+        </h3>
         <div className="flex gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
           <button
             onClick={onCopy}

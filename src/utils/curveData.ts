@@ -66,6 +66,19 @@ export function formatMinutesDisplay(minutes: number): string {
   return `${m}m ${s}s`;
 }
 
+export function getOverLimitEventIds(events: GameEvent[], limitMinutes: number): Set<string> {
+  const ids = new Set<string>();
+  let cumulative = 0;
+  for (const event of events) {
+    const dur = toMinutes(event.durationMin, event.durationSec);
+    if (cumulative + dur > limitMinutes) {
+      ids.add(event.id);
+    }
+    cumulative += dur;
+  }
+  return ids;
+}
+
 export function formatTotalDuration(events: GameEvent[]): string {
   const totalSeconds = events.reduce((sum, e) => {
     return sum + e.durationMin * 60 + e.durationSec;

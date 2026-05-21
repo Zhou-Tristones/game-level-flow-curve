@@ -9,7 +9,7 @@ export default function App() {
 
   return (
     <div className="h-screen bg-slate-950 text-white flex flex-col overflow-hidden">
-      <TopBar chartClipboard={!!m.clipboard} eventClipboard={!!m.eventClipboard} />
+      <TopBar chartClipboard={m.clipboardInfo} eventClipboard={m.eventClipboardInfo} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：三个预设图表 */}
@@ -23,7 +23,6 @@ export default function App() {
               onSelect={() => m.selectChart(chart.id)}
               onCopy={() => m.copyEvents(chart.id)}
               onPaste={() => m.pasteEvents(chart.id)}
-              durationDisplay={formatTotalDuration(chart.events)}
               isOverLimit={m.isOverLimit(chart.id)}
             />
           ))}
@@ -36,12 +35,15 @@ export default function App() {
             isOverLimit={m.isOverLimit(m.selectedChartId)}
             durationDisplay={formatTotalDuration(m.selectedChart.events)}
             hasEventClipboard={!!m.eventClipboard}
+            overLimitEventIds={m.getOverLimitEventIds(m.selectedChartId)}
             onUpdateChartMeta={m.updateChartMeta}
             onUpdateEvent={m.updateEvent}
             onRemoveEvent={m.removeEvent}
             onAddEvent={m.addEvent}
             onCopyEvent={m.copyEvent}
             onPasteEvent={m.pasteEvent}
+            onSetTotalDurationLimit={m.setTotalDurationLimit}
+            onSetTotalDurationToCurrent={m.setTotalDurationToCurrent}
           />
         </div>
       </div>

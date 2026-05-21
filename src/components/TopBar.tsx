@@ -1,6 +1,6 @@
 interface TopBarProps {
-  chartClipboard: boolean;
-  eventClipboard: boolean;
+  chartClipboard: { title: string; count: number } | null;
+  eventClipboard: { name: string; duration: string } | null;
 }
 
 export default function TopBar({ chartClipboard, eventClipboard }: TopBarProps) {
@@ -9,10 +9,14 @@ export default function TopBar({ chartClipboard, eventClipboard }: TopBarProps) 
       <h1 className="text-sm font-semibold text-white tracking-wide">游戏情绪流设计器</h1>
       <div className="flex gap-3">
         {chartClipboard && (
-          <span className="text-xs text-purple-400">已复制图表事件</span>
+          <span className="text-xs text-purple-400">
+            已复制「{chartClipboard.title}」· {chartClipboard.count} 个事件
+          </span>
         )}
         {eventClipboard && (
-          <span className="text-xs text-purple-400">已复制单个事件</span>
+          <span className="text-xs text-purple-400">
+            已复制事件「{eventClipboard.name}」{eventClipboard.duration}
+          </span>
         )}
       </div>
     </div>

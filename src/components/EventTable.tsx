@@ -52,6 +52,8 @@ interface EventTableProps {
   isOverLimit: boolean;
   durationDisplay: string;
   hasEventClipboard: boolean;
+  totalDurationLimit?: number;
+  overLimitEventIds: Set<string>;
   onUpdateEvent: (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => void;
   onRemoveEvent: (chartId: string, eventId: string) => void;
   onAddEvent: (chartId: string) => void;
@@ -65,6 +67,8 @@ export default function EventTable({
   isOverLimit,
   durationDisplay,
   hasEventClipboard,
+  totalDurationLimit,
+  overLimitEventIds,
   onUpdateEvent,
   onRemoveEvent,
   onAddEvent,
@@ -76,22 +80,27 @@ export default function EventTable({
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-slate-300">事件列表</h3>
         <span className={`text-xs ${isOverLimit ? 'text-red-400' : 'text-slate-500'}`}>
-          总时长: {durationDisplay} / 30分钟
+          总时长: {durationDisplay}
         </span>
       </div>
 
       <div className="space-y-2">
         {events.map((event, index) => {
           const defaultEnd = event.endValue === undefined;
+          const eventOverLimit = totalDurationLimit !== undefined && overLimitEventIds.has(event.id);
           return (
-            <div key={event.id} className="bg-slate-800/50 rounded-lg p-3 space-y-2">
+            <div key={event.id} className={`rounded-lg p-3 space-y-2 ${
+              eventOverLimit ? 'bg-red-900/20 border border-red-500/30' : 'bg-slate-800/50'
+            }`}>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-500 w-4">{index + 1}</span>
+                <span className={`text-xs w-4 ${eventOverLimit ? 'text-red-400' : 'text-slate-500'}`}>{index + 1}</span>
                 <input
                   type="text"
                   value={event.name}
                   onChange={(e) => onUpdateEvent(chartId, event.id, 'name', e.target.value)}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                  className={`flex-1 bg-slate-800 border rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors ${
+                    eventOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
+                  }`}
                   placeholder="事件名"
                 />
                 <button
@@ -131,7 +140,7 @@ export default function EventTable({
                     value={event.durationMin}
                     onChange={(e) => onUpdateEvent(chartId, event.id, 'durationMin', e.target.value)}
                     className={`w-10 bg-slate-800 border rounded px-1 py-0.5 text-white text-xs text-center focus:outline-none focus:border-purple-500 transition-colors ${
-                      isOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
+                      eventOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
                     }`}
                   />
                   <span className="text-slate-500">m</span>
@@ -142,7 +151,7 @@ export default function EventTable({
                     value={event.durationSec}
                     onChange={(e) => onUpdateEvent(chartId, event.id, 'durationSec', e.target.value)}
                     className={`w-10 bg-slate-800 border rounded px-1 py-0.5 text-white text-xs text-center focus:outline-none focus:border-purple-500 transition-colors ${
-                      isOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
+                      eventOverLimit ? 'border-red-500 text-red-300' : 'border-slate-700'
                     }`}
                   />
                   <span className="text-slate-500">s</span>

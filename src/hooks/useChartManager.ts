@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChartInstance, GameEvent } from '../types';
 import { createDefaultCharts, generateId } from '../constants';
-import { getTotalDuration } from '../utils/curveData';
+import { getTotalDuration, getOverLimitEventIds } from '../utils/curveData';
 
 export interface ChartManager {
   charts: ChartInstance[];
@@ -9,24 +9,31 @@ export interface ChartManager {
   selectChart: (id: string) => void;
   selectedChart: ChartInstance;
   clipboard: GameEvent[] | null;
+  clipboardInfo: { title: string; count: number } | null;
   copyEvents: (chartId: string) => void;
   pasteEvents: (chartId: string) => void;
   eventClipboard: GameEvent | null;
+  eventClipboardInfo: { name: string; duration: string } | null;
   copyEvent: (chartId: string, eventId: string) => void;
   pasteEvent: (chartId: string, targetEventId?: string) => void;
   addEvent: (chartId: string) => void;
   updateEvent: (chartId: string, eventId: string, field: keyof GameEvent, value: string | number) => void;
   removeEvent: (chartId: string, eventId: string) => void;
   updateChartMeta: (chartId: string, field: 'title' | 'yAxisName', value: string) => void;
+  setTotalDurationLimit: (chartId: string, limit: number | undefined) => void;
+  setTotalDurationToCurrent: (chartId: string) => void;
   getDuration: (chartId: string) => number;
   isOverLimit: (chartId: string) => boolean;
+  getOverLimitEventIds: (chartId: string) => Set<string>;
 }
 
 export function useChartManager(): ChartManager {
   const [charts, setCharts] = useState<ChartInstance[]>(() => createDefaultCharts());
   const [selectedChartId, setSelectedChartId] = useState<string>(charts[0].id);
   const [clipboard, setClipboard] = useState<GameEvent[] | null>(null);
+  const [clipboardInfo, setClipboardInfo] = useState<{ title: string; count: number } | null>(null);
   const [eventClipboard, setEventClipboard] = useState<GameEvent | null>(null);
+  const [eventClipboardInfo, setEventClipboardInfo] = useState<{ name: string; duration: string } | null>(null);
 
   const selectedChart = charts.find(c => c.id === selectedChartId) ?? charts[0];
 
@@ -38,6 +45,7 @@ export function useChartManager(): ChartManager {
     const chart = charts.find(c => c.id === chartId);
     if (chart) {
       setClipboard(chart.events.map(e => ({ ...e })));
+      setClipboardInfo({ title: chart.title, count: chart.events.length });
     }
   }, [charts]);
 
@@ -56,7 +64,13 @@ export function useChartManager(): ChartManager {
     const chart = charts.find(c => c.id === chartId);
     if (!chart) return;
     const event = chart.events.find(e => e.id === eventId);
-    if (event) setEventClipboard({ ...event });
+    if (event) {
+      setEventClipboard({ ...event });
+      const m = event.durationMin;
+      const s = event.durationSec;
+      const dur = s > 0 ? `${m}m${s}s` : `${m}m`;
+      setEventClipboardInfo({ name: event.name, duration: dur });
+    }
   }, [charts]);
 
   const pasteEvent = useCallback((chartId: string, targetEventId?: string) => {
@@ -151,8 +165,31 @@ export function useChartManager(): ChartManager {
     return getTotalDuration(chart.events);
   };
 
+  const setTotalDurationLimit = (chartId: string, limit: number | undefined) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      return { ...chart, totalDurationLimit: limit };
+    }));
+  };
+
+  const setTotalDurationToCurrent = (chartId: string) => {
+    setCharts(prev => prev.map(chart => {
+      if (chart.id !== chartId) return chart;
+      const total = getTotalDuration(chart.events);
+      return { ...chart, totalDurationLimit: total };
+    }));
+  };
+
   const isOverLimit = (chartId: string): boolean => {
-    return getDuration(chartId) > 30;
+    const chart = charts.find(c => c.id === chartId);
+    if (!chart || chart.totalDurationLimit === undefined) return false;
+    return getDuration(chartId) > chart.totalDurationLimit;
+  };
+
+  const getOverLimitIds = (chartId: string): Set<string> => {
+    const chart = charts.find(c => c.id === chartId);
+    if (!chart || chart.totalDurationLimit === undefined) return new Set();
+    return getOverLimitEventIds(chart.events, chart.totalDurationLimit);
   };
 
   return {
@@ -161,16 +198,21 @@ export function useChartManager(): ChartManager {
     selectChart,
     selectedChart,
     clipboard,
+    clipboardInfo,
     copyEvents,
     pasteEvents,
     eventClipboard,
+    eventClipboardInfo,
     copyEvent,
     pasteEvent,
     addEvent,
     updateEvent,
     removeEvent,
     updateChartMeta,
+    setTotalDurationLimit,
+    setTotalDurationToCurrent,
     getDuration,
     isOverLimit,
+    getOverLimitEventIds: getOverLimitIds,
   };
 }

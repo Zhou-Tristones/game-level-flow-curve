@@ -1,6 +1,5 @@
 import { ChartInstance } from '../types';
 
-export const MAX_DURATION = 30;
 export const CHART_COUNT = 3;
 
 export const COLOR_PRESETS = [
