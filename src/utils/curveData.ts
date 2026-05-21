@@ -67,7 +67,8 @@ export function formatMinutesDisplay(minutes: number): string {
 }
 
 export interface SpecialMomentPoint {
-  type: 'variation' | 'climax';
+  icon: string;
+  color: string;
   name: string;
   x: number;
   y: number;
@@ -93,7 +94,8 @@ export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMoment
       const t = eventDuration > 0 ? offset / eventDuration : 0;
       const y = startY + t * (endY - startY);
       points.push({
-        type: moment.type,
+        icon: moment.icon,
+        color: moment.color,
         name: moment.name,
         x: currentX + offset,
         y,

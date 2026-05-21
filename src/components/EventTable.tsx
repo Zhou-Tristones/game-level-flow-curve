@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Copy, ClipboardPaste } from 'lucide-react';
 import { GameEvent, SpecialMoment } from '../types';
-import { COLOR_PRESETS, EVENT_COLORS } from '../constants';
+import { COLOR_PRESETS, EVENT_COLORS, MOMENT_ICON_PRESETS } from '../constants';
 
 function hexToRgb(hex: string) {
   return {
@@ -203,9 +203,43 @@ interface EventTableProps {
   onAddEvent: (chartId: string) => void;
   onCopyEvent: (chartId: string, eventId: string) => void;
   onPasteEvent: (chartId: string, targetEventId?: string) => void;
-  onAddMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  onAddMoment: (chartId: string, eventId: string) => void;
   onUpdateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
   onRemoveMoment: (chartId: string, eventId: string, momentId: string) => void;
+}
+
+function IconSelect({ value, onChange }: { value: string; onChange: (icon: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-5 h-5 flex items-center justify-center rounded border border-slate-600 text-xs hover:border-slate-400 transition-colors"
+      >
+        {value}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-7 left-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2 shadow-xl">
+            <div className="flex gap-1">
+              {MOMENT_ICON_PRESETS.map((icon) => (
+                <button
+                  key={icon}
+                  onClick={() => { onChange(icon); setOpen(false); }}
+                  className={`w-6 h-6 flex items-center justify-center rounded text-sm transition-all ${
+                    value === icon ? 'bg-slate-700 ring-1 ring-white/30' : 'hover:bg-slate-700/50'
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMoment, onAddMoment }: {
@@ -231,9 +265,10 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
         <div className="mt-2 space-y-1.5">
           {moments.map((m) => (
             <div key={m.id} className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1">
-              <span className={`text-[10px] ${m.type === 'variation' ? 'text-cyan-400' : 'text-amber-400'}`}>
-                {m.type === 'variation' ? '◈' : '★'}
-              </span>
+              <IconSelect
+                value={m.icon}
+                onChange={(icon) => onUpdateMoment(chartId, eventId, m.id, 'icon', icon)}
+              />
               <input
                 type="text"
                 value={m.name}
@@ -262,6 +297,11 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
                 />
                 <span className="text-slate-500">s</span>
               </div>
+              <ColorSelect
+                value={m.color}
+                defaultColor={m.color}
+                onChange={(c) => onUpdateMoment(chartId, eventId, m.id, 'color', c || m.color)}
+              />
               <button
                 onClick={() => onRemoveMoment(chartId, eventId, m.id)}
                 className="p-0.5 rounded text-slate-500 hover:text-red-400 transition-colors"
@@ -270,20 +310,12 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
               </button>
             </div>
           ))}
-          <div className="flex gap-2">
-            <button
-              onClick={() => onAddMoment(chartId, eventId, 'variation')}
-              className="flex-1 flex items-center justify-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors py-1 border border-dashed border-slate-700 rounded hover:border-cyan-500/50"
-            >
-              + 变奏
-            </button>
-            <button
-              onClick={() => onAddMoment(chartId, eventId, 'climax')}
-              className="flex-1 flex items-center justify-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors py-1 border border-dashed border-slate-700 rounded hover:border-amber-500/50"
-            >
-              + 高潮
-            </button>
-          </div>
+          <button
+            onClick={() => onAddMoment(chartId, eventId)}
+            className="w-full flex items-center justify-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 transition-colors py-1 border border-dashed border-slate-700 rounded hover:border-purple-500/50"
+          >
+            + 添加时刻
+          </button>
         </div>
       )}
     </div>

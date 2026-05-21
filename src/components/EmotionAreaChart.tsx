@@ -31,12 +31,13 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
     return Array.from(xs).sort((a, b) => a - b);
   }, [referenceAreas]);
 
-  const [hoveredMoment, setHoveredMoment] = useState<{ name: string; type: string; time: string } | null>(null);
+  const [hoveredMoment, setHoveredMoment] = useState<{ name: string; icon: string; color: string; time: string } | null>(null);
 
   const handleMomentEnter = useCallback((mp: typeof momentPoints[number]) => {
     setHoveredMoment({
       name: mp.name,
-      type: mp.type,
+      icon: mp.icon,
+      color: mp.color,
       time: formatMinutesDisplay(mp.x),
     });
   }, []);
@@ -121,9 +122,9 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
               <ReferenceLine
                 key={`moment-line-${i}`}
                 x={mp.x}
-                stroke={mp.type === 'climax' ? '#f59e0b' : '#22d3ee'}
-                strokeDasharray={mp.type === 'climax' ? '6 2' : '4 3'}
-                strokeWidth={mp.type === 'climax' ? 1.5 : 1}
+                stroke={mp.color}
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
               />
             ))}
             <Area
@@ -140,12 +141,11 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
 
         {/* X-axis moment markers + tooltips */}
         {totalDuration > 0 && momentPoints.length > 0 && (
-          <div className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 25, height: 1 }}>
+          <div className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 22, height: 1 }}>
             {momentPoints.map((mp, i) => {
               const xMax = Math.max(totalDuration, 1);
               const leftPct = (mp.x / xMax) * 100;
               const isHovered = hoveredMoment?.name === mp.name && hoveredMoment?.time === formatMinutesDisplay(mp.x);
-              const isClimax = mp.type === 'climax';
               return (
                 <div
                   key={`moment-marker-${i}`}
@@ -157,22 +157,20 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   <div className={`-translate-x-1/2 cursor-pointer ${isHovered ? 'scale-110' : ''} transition-transform`}>
                     <div
                       className="text-xs leading-none font-medium"
-                      style={{ color: isClimax ? '#f59e0b' : '#22d3ee' }}
+                      style={{ color: mp.color }}
                     >
-                      {isClimax ? '★' : '◈'}
+                      {mp.icon}
                     </div>
                   </div>
                   {/* Tooltip */}
                   {isHovered && (
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap z-30">
                       <div className="flex items-center gap-1.5">
-                        <span className={isClimax ? 'text-amber-400' : 'text-cyan-400'}>
-                          {isClimax ? '★' : '◈'}
-                        </span>
+                        <span style={{ color: mp.color }}>{mp.icon}</span>
                         <span className="text-white text-xs font-medium">{mp.name}</span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
-                        {isClimax ? '高潮时刻' : '变奏时刻'} · {formatMinutesDisplay(mp.x)}
+                        特殊时刻 · {formatMinutesDisplay(mp.x)}
                       </div>
                     </div>
                   )}

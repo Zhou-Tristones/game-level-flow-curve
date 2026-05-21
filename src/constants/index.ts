@@ -2,6 +2,8 @@ import { ChartInstance } from '../types';
 
 export const CHART_COUNT = 3;
 
+export const MOMENT_ICON_PRESETS = ['★', '◈', '▲', '●', '■', '◆', '⬆', '✦'];
+
 export const COLOR_PRESETS = [
   '#8b5cf6', // 紫
   '#3b82f6', // 蓝

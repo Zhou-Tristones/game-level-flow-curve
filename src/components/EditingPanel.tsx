@@ -15,7 +15,7 @@ interface EditingPanelProps {
   onPasteEvent: (chartId: string, targetEventId?: string) => void;
   onSetTotalDurationLimit: (chartId: string, limit: number | undefined) => void;
   onSetTotalDurationToCurrent: (chartId: string) => void;
-  onAddMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  onAddMoment: (chartId: string, eventId: string) => void;
   onUpdateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
   onRemoveMoment: (chartId: string, eventId: string, momentId: string) => void;
 }

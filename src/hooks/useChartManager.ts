@@ -25,7 +25,7 @@ export interface ChartManager {
   getDuration: (chartId: string) => number;
   isOverLimit: (chartId: string) => boolean;
   getOverLimitEventIds: (chartId: string) => Set<string>;
-  addMoment: (chartId: string, eventId: string, type: 'variation' | 'climax') => void;
+  addMoment: (chartId: string, eventId: string) => void;
   updateMoment: (chartId: string, eventId: string, momentId: string, field: keyof SpecialMoment, value: string | number) => void;
   removeMoment: (chartId: string, eventId: string, momentId: string) => void;
 }
@@ -196,7 +196,7 @@ export function useChartManager(): ChartManager {
     return getOverLimitEventIds(chart.events, chart.totalDurationLimit);
   };
 
-  const addMoment = (chartId: string, eventId: string, type: 'variation' | 'climax') => {
+  const addMoment = (chartId: string, eventId: string) => {
     setCharts(prev => prev.map(chart => {
       if (chart.id !== chartId) return chart;
       return {
@@ -207,8 +207,9 @@ export function useChartManager(): ChartManager {
             ...evt,
             moments: [...(evt.moments || []), {
               id: generateId(),
-              name: type === 'variation' ? '变奏时刻' : '高潮时刻',
-              type,
+              name: '特殊时刻',
+              icon: '★',
+              color: '#f59e0b',
               offsetMin: 1,
               offsetSec: 0,
             }],

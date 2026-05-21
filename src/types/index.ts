@@ -1,7 +1,8 @@
 export interface SpecialMoment {
   id: string;
   name: string;
-  type: 'variation' | 'climax';
+  icon: string;
+  color: string;
   offsetMin: number;
   offsetSec: number;
 }
