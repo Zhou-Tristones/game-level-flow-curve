@@ -210,7 +210,7 @@ export function useChartManager(): ChartManager {
               name: '特殊时刻',
               icon: '★',
               color: '#f59e0b',
-              offsetMin: 1,
+              offsetMin: 0,
               offsetSec: 0,
             }],
           };

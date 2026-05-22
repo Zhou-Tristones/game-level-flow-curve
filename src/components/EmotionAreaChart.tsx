@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { ChartInstance } from '../types';
 import { calculateCurvePoints, calculateReferenceAreas, getTotalDuration, calculateSpecialMomentPoints, hexToRgba, formatMinutesDisplay } from '../utils/curveData';
-import { EVENT_COLORS, EVENT_LABEL_COLORS } from '../constants';
+import { EVENT_COLORS } from '../constants';
 
 interface EmotionAreaChartProps {
   chart: ChartInstance;
@@ -31,18 +31,37 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
     return Array.from(xs).sort((a, b) => a - b);
   }, [referenceAreas]);
 
-  const [hoveredMoment, setHoveredMoment] = useState<{ name: string; icon: string; color: string; time: string } | null>(null);
+  const [hoveredMoment, setHoveredMoment] = useState<{ name: string; icon: string; color: string; time: string; image?: string } | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  const clearHoverTimer = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  };
 
   const handleMomentEnter = useCallback((mp: typeof momentPoints[number]) => {
+    clearHoverTimer();
     setHoveredMoment({
       name: mp.name,
       icon: mp.icon,
       color: mp.color,
       time: formatMinutesDisplay(mp.x),
+      image: mp.image,
     });
   }, []);
 
   const handleMomentLeave = useCallback(() => {
+    hoverTimerRef.current = setTimeout(() => setHoveredMoment(null), 150);
+  }, []);
+
+  const handleTooltipEnter = useCallback(() => {
+    clearHoverTimer();
+  }, []);
+
+  const handleTooltipLeave = useCallback(() => {
     setHoveredMoment(null);
   }, []);
 
@@ -164,12 +183,27 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   </div>
                   {/* Tooltip */}
                   {isHovered && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap z-30">
-                      <div className="flex items-center gap-1.5">
+                    <div
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 shadow-xl z-30 pointer-events-auto"
+                      style={{ minWidth: 120 }}
+                      onMouseEnter={handleTooltipEnter}
+                      onMouseLeave={handleTooltipLeave}
+                    >
+                      {mp.image && (
+                        <div className="mb-1.5 flex justify-center">
+                          <img
+                            src={mp.image}
+                            alt={mp.name}
+                            className="max-w-[200px] max-h-[150px] rounded object-contain cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all"
+                            onClick={() => setLightboxImage(mp.image!)}
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <span style={{ color: mp.color }}>{mp.icon}</span>
                         <span className="text-white text-xs font-medium">{mp.name}</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
+                      <div className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">
                         特殊时刻 · {formatMinutesDisplay(mp.x)}
                       </div>
                     </div>
@@ -192,8 +226,8 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   style={{ left: `${leftPct}%` }}
                 >
                   <span
-                    className="text-[11px] font-medium"
-                    style={{ color: area.color ? hexToRgba(area.color, 0.85) : EVENT_LABEL_COLORS[area.colorIndex] }}
+                    className="text-[11px] font-medium text-white"
+                    style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
                   >
                     {area.eventName}
                   </span>
@@ -203,6 +237,26 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
           </div>
         )}
       </div>
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt=""
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          />
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

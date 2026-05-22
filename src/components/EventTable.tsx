@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, Copy, ClipboardPaste } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Copy, ClipboardPaste, Image } from 'lucide-react';
 import { GameEvent, SpecialMoment } from '../types';
 import { COLOR_PRESETS, EVENT_COLORS, MOMENT_ICON_PRESETS } from '../constants';
 
@@ -208,33 +208,153 @@ interface EventTableProps {
   onRemoveMoment: (chartId: string, eventId: string, momentId: string) => void;
 }
 
-function IconSelect({ value, onChange }: { value: string; onChange: (icon: string) => void }) {
+function StyleSelect({ icon, color, onChangeIcon, onChangeColor }: {
+  icon: string;
+  color: string;
+  onChangeIcon: (icon: string) => void;
+  onChangeColor: (color: string) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string>('');
+  const [showRgb, setShowRgb] = useState(false);
+
+  const openPopover = () => {
+    setEditing(color);
+    setShowRgb(false);
+    setOpen(true);
+  };
+
+  const commitColor = (c: string) => {
+    if (c && c !== color) onChangeColor(c);
+  };
+
+  const closePopover = () => {
+    commitColor(editing);
+    setOpen(false);
+  };
+
+  const currentRgb = hexToRgb(editing || color);
+  const { h } = rgbToHsl(currentRgb.r, currentRgb.g, currentRgb.b);
+  const rgb = hexToRgb(editing || color);
+
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
-        className="w-5 h-5 flex items-center justify-center rounded border border-slate-600 text-xs hover:border-slate-400 transition-colors"
+        onClick={openPopover}
+        className="w-5 h-5 flex items-center justify-center rounded border-2 border-slate-600 hover:border-slate-400 transition-colors text-xs"
+        style={{ color }}
       >
-        {value}
+        {icon}
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-7 left-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2 shadow-xl">
+          <div className="fixed inset-0 z-10" onClick={closePopover} />
+          <div className="absolute top-7 left-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2.5 shadow-xl w-56">
+            {/* Row 1: Icon presets */}
             <div className="flex gap-1">
-              {MOMENT_ICON_PRESETS.map((icon) => (
+              {MOMENT_ICON_PRESETS.map((ic) => (
                 <button
-                  key={icon}
-                  onClick={() => { onChange(icon); setOpen(false); }}
+                  key={ic}
+                  onClick={() => onChangeIcon(ic)}
                   className={`w-6 h-6 flex items-center justify-center rounded text-sm transition-all ${
-                    value === icon ? 'bg-slate-700 ring-1 ring-white/30' : 'hover:bg-slate-700/50'
+                    icon === ic ? 'bg-slate-700 ring-1 ring-white/30' : 'hover:bg-slate-700/50'
                   }`}
                 >
-                  {icon}
+                  {ic}
                 </button>
               ))}
             </div>
+
+            {/* Row 2: Preset colors */}
+            <div className="flex gap-1.5 mt-2.5">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => { onChangeColor(c); setEditing(c); }}
+                  className={`w-5 h-5 rounded-full border transition-all ${
+                    color === c ? 'border-white scale-110 ring-1 ring-white/30' : 'border-slate-600 hover:scale-110 hover:border-slate-400'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+
+            {/* Row 3: Hue slider */}
+            <div className="mt-2.5">
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={h}
+                onInput={(e) => {
+                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
+                  const cRgb = hexToRgb(editing || color);
+                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
+                  setEditing(hslToHex(hue, hsl.s, hsl.l));
+                }}
+                onChange={(e) => {
+                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
+                  const cRgb = hexToRgb(editing || color);
+                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
+                  const newColor = hslToHex(hue, hsl.s, hsl.l);
+                  setEditing(newColor);
+                  commitColor(newColor);
+                }}
+                className="w-full h-2.5 rounded-full appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md
+                  [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-800
+                  [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
+                  [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                style={{
+                  background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
+                }}
+              />
+            </div>
+
+            {/* Row 4: Expandable RGB */}
+            <button
+              onClick={() => setShowRgb(!showRgb)}
+              className="mt-2 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-300 transition-colors w-full"
+            >
+              <span className={`inline-block transition-transform ${showRgb ? 'rotate-90' : ''}`}>▶</span>
+              RGB 编辑
+            </button>
+            {showRgb && (
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className="text-[10px] text-red-400 w-2">R</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.r}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(v, rgb.g, rgb.b)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-[10px] text-green-400 w-2">G</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.g}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, v, rgb.b)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-[10px] text-blue-400 w-2">B</span>
+                <input
+                  type="number"
+                  min={0} max={255}
+                  value={rgb.b}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, rgb.g, v)); }}
+                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-slate-600 ml-1 shrink-0"
+                  style={{ backgroundColor: editing || color }}
+                />
+              </div>
+            )}
           </div>
         </>
       )}
@@ -251,9 +371,30 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
   onAddMoment: EventTableProps['onAddMoment'];
 }) {
   const [open, setOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingMomentId, setPendingMomentId] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingMomentId) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onUpdateMoment(chartId, eventId, pendingMomentId, 'image', reader.result as string);
+      setPendingMomentId(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   return (
     <div className="mt-2 pt-2 border-t border-slate-700/50">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-300 transition-colors"
@@ -265,9 +406,11 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
         <div className="mt-2 space-y-1.5">
           {moments.map((m) => (
             <div key={m.id} className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1">
-              <IconSelect
-                value={m.icon}
-                onChange={(icon) => onUpdateMoment(chartId, eventId, m.id, 'icon', icon)}
+              <StyleSelect
+                icon={m.icon}
+                color={m.color}
+                onChangeIcon={(icon) => onUpdateMoment(chartId, eventId, m.id, 'icon', icon)}
+                onChangeColor={(c) => onUpdateMoment(chartId, eventId, m.id, 'color', c)}
               />
               <input
                 type="text"
@@ -276,32 +419,62 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
                 className="flex-1 bg-slate-800/50 border border-slate-700 rounded px-1.5 py-0.5 text-white text-[10px] focus:outline-none focus:border-purple-500 min-w-0"
                 placeholder="时刻名"
               />
-              <div className="flex gap-0.5 items-center text-[10px]">
+              <div className="flex gap-0 items-center text-[10px]">
+                <button
+                  onClick={() => onUpdateMoment(chartId, eventId, m.id, 'offsetMin', Math.max(0, m.offsetMin - 1))}
+                  className="w-3.5 h-4 flex items-center justify-center rounded-l bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-colors text-[10px] leading-none shrink-0"
+                >−</button>
                 <input
                   type="number"
                   min={0}
                   value={m.offsetMin}
                   onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'offsetMin', e.target.value)}
-                  className="w-8 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                  className="w-7 bg-slate-800 border-y border-slate-700 px-0.5 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
                     [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span className="text-slate-500">m</span>
+                <button
+                  onClick={() => onUpdateMoment(chartId, eventId, m.id, 'offsetMin', m.offsetMin + 1)}
+                  className="w-3.5 h-4 flex items-center justify-center rounded-r bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-colors text-[10px] leading-none shrink-0"
+                >+</button>
+                <span className="text-slate-500 ml-0.5">m</span>
+                <button
+                  onClick={() => onUpdateMoment(chartId, eventId, m.id, 'offsetSec', Math.max(0, m.offsetSec - 1))}
+                  className="w-3.5 h-4 flex items-center justify-center rounded-l bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-colors text-[10px] leading-none shrink-0 ml-0.5"
+                >−</button>
                 <input
                   type="number"
                   min={0}
                   max={59}
                   value={m.offsetSec}
                   onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'offsetSec', e.target.value)}
-                  className="w-8 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
+                  className="w-7 bg-slate-800 border-y border-slate-700 px-0.5 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
                     [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span className="text-slate-500">s</span>
+                <button
+                  onClick={() => onUpdateMoment(chartId, eventId, m.id, 'offsetSec', Math.min(59, m.offsetSec + 1))}
+                  className="w-3.5 h-4 flex items-center justify-center rounded-r bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-colors text-[10px] leading-none shrink-0"
+                >+</button>
+                <span className="text-slate-500 ml-0.5">s</span>
               </div>
-              <ColorSelect
-                value={m.color}
-                defaultColor={m.color}
-                onChange={(c) => onUpdateMoment(chartId, eventId, m.id, 'color', c || m.color)}
-              />
+              {m.image ? (
+                <div className="relative group shrink-0">
+                  <img src={m.image} className="w-4 h-4 rounded object-cover" alt="" />
+                  <button
+                    onClick={() => onUpdateMoment(chartId, eventId, m.id, 'image', '')}
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-white text-[8px] leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setPendingMomentId(m.id); fileInputRef.current?.click(); }}
+                  className="p-0.5 rounded text-slate-500 hover:text-purple-400 transition-colors shrink-0"
+                  title="添加图片"
+                >
+                  <Image className="w-3 h-3" />
+                </button>
+              )}
               <button
                 onClick={() => onRemoveMoment(chartId, eventId, m.id)}
                 className="p-0.5 rounded text-slate-500 hover:text-red-400 transition-colors"

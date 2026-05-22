@@ -72,6 +72,7 @@ export interface SpecialMomentPoint {
   name: string;
   x: number;
   y: number;
+  image?: string;
 }
 
 export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMomentPoint[] {
@@ -99,6 +100,7 @@ export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMoment
         name: moment.name,
         x: currentX + offset,
         y,
+        image: moment.image,
       });
     });
 
