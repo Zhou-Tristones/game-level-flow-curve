@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChartInstance, GameEvent, SpecialMoment } from '../types';
 import { createDefaultCharts, generateId } from '../constants';
-import { getTotalDuration, getOverLimitEventIds } from '../utils/curveData';
+import { getTotalDuration, getOverLimitEventIds, toMinutes } from '../utils/curveData';
 
 export interface ChartManager {
   charts: ChartInstance[];
@@ -232,7 +232,15 @@ export function useChartManager(): ChartManager {
               if (m.id !== momentId) return m;
               if (field === 'offsetMin' || field === 'offsetSec') {
                 const num = typeof value === 'string' ? parseInt(value, 10) : value;
-                return { ...m, [field]: Math.max(0, Math.min(59, num || 0)) };
+                const clamped = Math.max(0, Math.min(59, num || 0));
+                const eventDur = toMinutes(evt.durationMin, evt.durationSec);
+                if (field === 'offsetMin') {
+                  const maxMin = eventDur - m.offsetSec / 60;
+                  return { ...m, offsetMin: Math.max(0, Math.min(clamped, Math.floor(maxMin))) };
+                } else {
+                  const maxSec = (eventDur - m.offsetMin) * 60;
+                  return { ...m, offsetSec: Math.max(0, Math.min(clamped, Math.min(59, Math.floor(maxSec)))) };
+                }
               }
               return { ...m, [field]: value };
             }),

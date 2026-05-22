@@ -17,13 +17,47 @@ import { EVENT_COLORS } from '../constants';
 interface EmotionAreaChartProps {
   chart: ChartInstance;
   height?: number | string;
+  fixedTooltips?: boolean;
+  showMoments?: boolean;
 }
 
-export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaChartProps) {
+export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = false, showMoments = true }: EmotionAreaChartProps) {
   const points = useMemo(() => calculateCurvePoints(chart.events), [chart.events]);
   const referenceAreas = useMemo(() => calculateReferenceAreas(chart.events), [chart.events]);
   const totalDuration = useMemo(() => getTotalDuration(chart.events), [chart.events]);
   const momentPoints = useMemo(() => calculateSpecialMomentPoints(chart.events), [chart.events]);
+
+  const momentRows = useMemo(() => {
+    if (!fixedTooltips || momentPoints.length === 0) return [] as ('above' | 'below')[];
+    const rows: ('above' | 'below')[] = [];
+    let lastAboveX = -Infinity;
+    let lastBelowX = -Infinity;
+    const threshold = 0.16;
+    for (let i = 0; i < momentPoints.length; i++) {
+      const x = momentPoints[i].x;
+      const distAbove = (x - lastAboveX) / Math.max(totalDuration, 1);
+      const distBelow = (x - lastBelowX) / Math.max(totalDuration, 1);
+      if (distAbove < threshold && distBelow >= threshold) {
+        rows.push('below');
+        lastBelowX = x;
+      } else if (distBelow < threshold && distAbove >= threshold) {
+        rows.push('above');
+        lastAboveX = x;
+      } else if (distAbove < threshold && distBelow < threshold) {
+        if (distAbove > distBelow) {
+          rows.push('above');
+          lastAboveX = x;
+        } else {
+          rows.push('below');
+          lastBelowX = x;
+        }
+      } else {
+        rows.push('below');
+        lastBelowX = x;
+      }
+    }
+    return rows;
+  }, [fixedTooltips, momentPoints, totalDuration]);
 
   const eventTicks = useMemo(() => {
     const xs = new Set<number>();
@@ -81,7 +115,41 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
       </div>
 
       {/* 图表区域 */}
-      <div className="relative flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Above cards strip (zoom mode, overlapping moments) */}
+        {showMoments && fixedTooltips && totalDuration > 0 && momentPoints.some((_mp, i) => momentRows[i] === 'above') && (
+          <div className="relative flex-[1] ml-[38px] mr-[16px] min-h-0">
+            {momentPoints.map((mp, i) => {
+              if (momentRows[i] !== 'above') return null;
+              const xMax = Math.max(totalDuration, 1);
+              const leftPct = (mp.x / xMax) * 100;
+              return (
+                <div
+                  key={`above-moment-${i}`}
+                  className="absolute transform -translate-x-1/2 pointer-events-auto"
+                  style={{ left: `${leftPct}%`, top: 4 }}
+                >
+                  <div className="flex flex-col items-center gap-1 bg-slate-800 border border-slate-600 rounded-lg p-1.5 shadow-lg" style={{ minWidth: 80 }}>
+                    {mp.image && (
+                      <img
+                        src={mp.image}
+                        alt={mp.name}
+                        className="max-w-[140px] max-h-[80px] rounded object-contain cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all"
+                        onClick={() => setLightboxImage(mp.image!)}
+                      />
+                    )}
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <span className="text-base" style={{ color: mp.color }}>{mp.icon}</span>
+                      <span className="text-white text-xs font-medium">{mp.name}</span>
+                      <span className="text-[10px] text-slate-400">· {formatMinutesDisplay(mp.x)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className={`relative min-h-0 ${fixedTooltips ? 'flex-[2]' : 'flex-1'}`}>
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart
             data={points}
@@ -114,7 +182,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
               axisLine={{ stroke: '#334155' }}
               width={30}
             />
-            {typeof height === 'number' && height > 200 && (
+            {showMoments && (
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#1e293b',
@@ -137,7 +205,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                 stroke="none"
               />
             ))}
-            {momentPoints.map((mp, i) => (
+            {showMoments && momentPoints.map((mp, i) => (
               <ReferenceLine
                 key={`moment-line-${i}`}
                 x={mp.x}
@@ -153,13 +221,14 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
               strokeWidth={2}
               fill={`url(#gradient-${chart.id})`}
               dot={false}
+              activeDot={showMoments ? { r: 3, fill: '#a78bfa', stroke: '#fff', strokeWidth: 1.5 } : false}
               isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
 
         {/* X-axis moment markers + tooltips */}
-        {totalDuration > 0 && momentPoints.length > 0 && (
+        {showMoments && totalDuration > 0 && momentPoints.length > 0 && (
           <div className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 22, height: 1 }}>
             {momentPoints.map((mp, i) => {
               const xMax = Math.max(totalDuration, 1);
@@ -170,10 +239,10 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   key={`moment-marker-${i}`}
                   className="absolute pointer-events-auto"
                   style={{ left: `${leftPct}%`, bottom: 0 }}
-                  onMouseEnter={() => handleMomentEnter(mp)}
-                  onMouseLeave={handleMomentLeave}
+                  onMouseEnter={() => !fixedTooltips && handleMomentEnter(mp)}
+                  onMouseLeave={() => !fixedTooltips && handleMomentLeave()}
                 >
-                  <div className={`-translate-x-1/2 cursor-pointer ${isHovered ? 'scale-110' : ''} transition-transform`}>
+                  <div className={`-translate-x-1/2 ${!fixedTooltips ? 'cursor-pointer' : ''} ${isHovered && !fixedTooltips ? 'scale-110' : ''} transition-transform`}>
                     <div
                       className="text-xs leading-none font-medium"
                       style={{ color: mp.color }}
@@ -182,7 +251,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                     </div>
                   </div>
                   {/* Tooltip */}
-                  {isHovered && (
+                  {isHovered && !fixedTooltips && (
                     <div
                       className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1.5 shadow-xl z-30 pointer-events-auto"
                       style={{ minWidth: 120 }}
@@ -202,9 +271,7 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <span style={{ color: mp.color }}>{mp.icon}</span>
                         <span className="text-white text-xs font-medium">{mp.name}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">
-                        特殊时刻 · {formatMinutesDisplay(mp.x)}
+                        <span className="text-[10px] text-slate-400">· {formatMinutesDisplay(mp.x)}</span>
                       </div>
                     </div>
                   )}
@@ -231,6 +298,43 @@ export default function EmotionAreaChart({ chart, height = 200 }: EmotionAreaCha
                   >
                     {area.eventName}
                   </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        </div>
+
+        {/* Fixed tooltips strip (zoom mode) */}
+        {showMoments && fixedTooltips && totalDuration > 0 && momentPoints.length > 0 && (
+          <div className="relative flex-[1] ml-[38px] mr-[16px] min-h-0">
+            {momentPoints.map((mp, i) => {
+              if (momentRows[i] !== 'below') return null;
+              const xMax = Math.max(totalDuration, 1);
+              const leftPct = (mp.x / xMax) * 100;
+              const compact = momentPoints.some((_, j) => momentRows[j] === 'above');
+              return (
+                <div
+                  key={`fixed-moment-${i}`}
+                  className="absolute transform -translate-x-1/2"
+                  style={{ left: `${leftPct}%`, top: 4 }}
+                >
+                  <div className={`flex flex-col items-center bg-slate-800 border border-slate-600 rounded-lg shadow-lg ${compact ? 'gap-1 p-1.5' : 'gap-1.5 p-2.5'}`} style={{ minWidth: compact ? 80 : 100 }}>
+                    {mp.image && (
+                      <img
+                        src={mp.image}
+                        alt={mp.name}
+                        className={`rounded object-contain cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all ${compact ? 'max-w-[140px] max-h-[80px]' : 'max-w-[200px] max-h-[120px]'}`}
+                        onClick={() => setLightboxImage(mp.image!)}
+                      />
+                    )}
+                    <div className={`flex items-center whitespace-nowrap ${compact ? 'gap-1' : 'gap-1.5'}`}>
+                      <span className={compact ? 'text-base' : 'text-lg'} style={{ color: mp.color }}>{mp.icon}</span>
+                      <span className={`text-white font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{mp.name}</span>
+                      <span className={`text-slate-400 ${compact ? 'text-[10px]' : 'text-xs'}`}>· {formatMinutesDisplay(mp.x)}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })}

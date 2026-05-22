@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useChartManager } from './hooks/useChartManager';
 import { formatTotalDuration } from './utils/curveData';
 import TopBar from './components/TopBar';
@@ -6,6 +7,7 @@ import EditingPanel from './components/EditingPanel';
 
 export default function App() {
   const m = useChartManager();
+  const [zoomedChartId, setZoomedChartId] = useState<string | null>(null);
 
   return (
     <div className="h-screen bg-slate-950 text-white flex flex-col overflow-hidden">
@@ -19,8 +21,10 @@ export default function App() {
               key={chart.id}
               chart={chart}
               isSelected={chart.id === m.selectedChartId}
+              isZoomed={chart.id === zoomedChartId}
               hasClipboard={!!m.clipboard}
               onSelect={() => m.selectChart(chart.id)}
+              onToggleZoom={() => setZoomedChartId(zoomedChartId === chart.id ? null : chart.id)}
               onCopy={() => m.copyEvents(chart.id)}
               onPaste={() => m.pasteEvents(chart.id)}
               isOverLimit={m.isOverLimit(chart.id)}
