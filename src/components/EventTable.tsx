@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Copy, ClipboardPaste, Image } from 'lucide-react';
+import { Plus, Trash2, Copy, ClipboardPaste, Image, MessageSquare } from 'lucide-react';
 import { GameEvent, SpecialMoment } from '../types';
-import { COLOR_PRESETS, EVENT_COLORS, MOMENT_ICON_PRESETS } from '../constants';
+import { COLOR_PRESETS, EVENT_COLORS, MOMENT_ICON_PRESETS, MOMENT_EMOJI_PRESETS } from '../constants';
 
 function hexToRgb(hex: string) {
   return {
@@ -215,32 +215,20 @@ function StyleSelect({ icon, color, onChangeIcon, onChangeColor }: {
   onChangeColor: (color: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<string>('');
-  const [showRgb, setShowRgb] = useState(false);
+  const [tab, setTab] = useState<'symbol' | 'emoji'>('symbol');
 
-  const openPopover = () => {
-    setEditing(color);
-    setShowRgb(false);
-    setOpen(true);
-  };
+  const presets = tab === 'symbol' ? MOMENT_ICON_PRESETS : MOMENT_EMOJI_PRESETS;
 
-  const commitColor = (c: string) => {
-    if (c && c !== color) onChangeColor(c);
-  };
-
-  const closePopover = () => {
-    commitColor(editing);
+  const selectPreset = (p: typeof presets[number]) => {
+    onChangeIcon(p.icon);
+    onChangeColor(p.color);
     setOpen(false);
   };
-
-  const currentRgb = hexToRgb(editing || color);
-  const { h } = rgbToHsl(currentRgb.r, currentRgb.g, currentRgb.b);
-  const rgb = hexToRgb(editing || color);
 
   return (
     <div className="relative">
       <button
-        onClick={openPopover}
+        onClick={() => setOpen(!open)}
         className="w-5 h-5 flex items-center justify-center rounded border-2 border-slate-600 hover:border-slate-400 transition-colors text-xs"
         style={{ color }}
       >
@@ -248,113 +236,39 @@ function StyleSelect({ icon, color, onChangeIcon, onChangeColor }: {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={closePopover} />
-          <div className="absolute top-7 left-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2.5 shadow-xl w-56">
-            {/* Row 1: Icon presets */}
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-7 left-0 z-20 bg-slate-800 border border-slate-700 rounded-lg p-2 shadow-xl">
+            {/* Tab switcher */}
+            <div className="flex gap-0.5 mb-2">
+              <button
+                onClick={() => setTab('symbol')}
+                className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                  tab === 'symbol' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >符号</button>
+              <button
+                onClick={() => setTab('emoji')}
+                className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                  tab === 'emoji' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >表情</button>
+            </div>
+            {/* Icon grid */}
             <div className="flex gap-1">
-              {MOMENT_ICON_PRESETS.map((ic) => (
+              {presets.map((p) => (
                 <button
-                  key={ic}
-                  onClick={() => onChangeIcon(ic)}
+                  key={p.icon}
+                  onClick={() => selectPreset(p)}
+                  title={p.label}
                   className={`w-6 h-6 flex items-center justify-center rounded text-sm transition-all ${
-                    icon === ic ? 'bg-slate-700 ring-1 ring-white/30' : 'hover:bg-slate-700/50'
+                    icon === p.icon ? 'bg-slate-700 ring-1 ring-white/30' : 'hover:bg-slate-700/50'
                   }`}
+                  style={{ color: p.color }}
                 >
-                  {ic}
+                  {p.icon}
                 </button>
               ))}
             </div>
-
-            {/* Row 2: Preset colors */}
-            <div className="flex gap-1.5 mt-2.5">
-              {COLOR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => { onChangeColor(c); setEditing(c); }}
-                  className={`w-5 h-5 rounded-full border transition-all ${
-                    color === c ? 'border-white scale-110 ring-1 ring-white/30' : 'border-slate-600 hover:scale-110 hover:border-slate-400'
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-
-            {/* Row 3: Hue slider */}
-            <div className="mt-2.5">
-              <input
-                type="range"
-                min={0}
-                max={360}
-                value={h}
-                onInput={(e) => {
-                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
-                  const cRgb = hexToRgb(editing || color);
-                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
-                  setEditing(hslToHex(hue, hsl.s, hsl.l));
-                }}
-                onChange={(e) => {
-                  const hue = parseInt((e.target as HTMLInputElement).value, 10);
-                  const cRgb = hexToRgb(editing || color);
-                  const hsl = rgbToHsl(cRgb.r, cRgb.g, cRgb.b);
-                  const newColor = hslToHex(hue, hsl.s, hsl.l);
-                  setEditing(newColor);
-                  commitColor(newColor);
-                }}
-                className="w-full h-2.5 rounded-full appearance-none cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
-                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md
-                  [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-800
-                  [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
-                  [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
-                style={{
-                  background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
-                }}
-              />
-            </div>
-
-            {/* Row 4: Expandable RGB */}
-            <button
-              onClick={() => setShowRgb(!showRgb)}
-              className="mt-2 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-300 transition-colors w-full"
-            >
-              <span className={`inline-block transition-transform ${showRgb ? 'rotate-90' : ''}`}>▶</span>
-              RGB 编辑
-            </button>
-            {showRgb && (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="text-[10px] text-red-400 w-2">R</span>
-                <input
-                  type="number"
-                  min={0} max={255}
-                  value={rgb.r}
-                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(v, rgb.g, rgb.b)); }}
-                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
-                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span className="text-[10px] text-green-400 w-2">G</span>
-                <input
-                  type="number"
-                  min={0} max={255}
-                  value={rgb.g}
-                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, v, rgb.b)); }}
-                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
-                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span className="text-[10px] text-blue-400 w-2">B</span>
-                <input
-                  type="number"
-                  min={0} max={255}
-                  value={rgb.b}
-                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditing(rgbToHex(rgb.r, rgb.g, v)); }}
-                  className="w-10 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-white text-[10px] text-center focus:outline-none focus:border-purple-500
-                    [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <div
-                  className="w-5 h-5 rounded-full border border-slate-600 ml-1 shrink-0"
-                  style={{ backgroundColor: editing || color }}
-                />
-              </div>
-            )}
           </div>
         </>
       )}
@@ -373,6 +287,7 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingMomentId, setPendingMomentId] = useState<string | null>(null);
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -405,7 +320,8 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
       {open && (
         <div className="mt-2 space-y-1.5">
           {moments.map((m) => (
-            <div key={m.id} className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1">
+            <div key={m.id} className="bg-slate-800 rounded">
+            <div className="flex items-center gap-1.5 px-2 py-1">
               <StyleSelect
                 icon={m.icon}
                 color={m.color}
@@ -456,6 +372,13 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
                 >+</button>
                 <span className="text-slate-500 ml-0.5">s</span>
               </div>
+              <button
+                onClick={() => setExpandedCommentId(expandedCommentId === m.id ? null : m.id)}
+                className={`p-0.5 rounded transition-colors shrink-0 ${
+                  m.comment ? 'text-amber-400 hover:text-amber-300' : 'text-slate-500 hover:text-slate-400'
+                }`}
+                title="备注"
+              ><MessageSquare className="w-3 h-3" /></button>
               {m.image ? (
                 <div className="relative group shrink-0">
                   <img src={m.image} className="w-4 h-4 rounded object-cover" alt="" />
@@ -481,6 +404,18 @@ function MomentEditor({ chartId, eventId, moments, onUpdateMoment, onRemoveMomen
               >
                 <Trash2 className="w-3 h-3" />
               </button>
+            </div>
+            {expandedCommentId === m.id && (
+              <div className="px-2 pb-1.5">
+                <textarea
+                  value={m.comment || ''}
+                  onChange={(e) => onUpdateMoment(chartId, eventId, m.id, 'comment', e.target.value)}
+                  placeholder="添加备注..."
+                  rows={2}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded px-1.5 py-0.5 text-white text-[10px] focus:outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+            )}
             </div>
           ))}
           <button

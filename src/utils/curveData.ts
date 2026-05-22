@@ -73,6 +73,11 @@ export interface SpecialMomentPoint {
   x: number;
   y: number;
   image?: string;
+  comment?: string;
+  eventId: string;
+  eventStartX: number;
+  eventDuration: number;
+  momentId: string;
 }
 
 export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMomentPoint[] {
@@ -101,6 +106,11 @@ export function calculateSpecialMomentPoints(events: GameEvent[]): SpecialMoment
         x: currentX + offset,
         y,
         image: moment.image,
+        comment: moment.comment,
+        eventId: event.id,
+        eventStartX: currentX,
+        eventDuration,
+        momentId: moment.id,
       });
     });
 

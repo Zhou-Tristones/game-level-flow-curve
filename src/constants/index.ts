@@ -2,7 +2,33 @@ import { ChartInstance } from '../types';
 
 export const CHART_COUNT = 3;
 
-export const MOMENT_ICON_PRESETS = ['★', '◈', '▲', '●', '■', '◆', '⬆', '✦'];
+export interface IconPreset {
+  icon: string;
+  color: string;
+  label: string;
+}
+
+export const MOMENT_ICON_PRESETS: IconPreset[] = [
+  { icon: '★', color: '#eab308', label: '关键/高光' },
+  { icon: '❤', color: '#ef4444', label: '温暖/爱' },
+  { icon: '⚡', color: '#f97316', label: '刺激/紧张' },
+  { icon: '☁', color: '#06b6d4', label: '平静/舒缓' },
+  { icon: '⚠', color: '#f59e0b', label: '危机/危险' },
+  { icon: '✦', color: '#a855f7', label: '惊叹/发现' },
+  { icon: '↻', color: '#22c55e', label: '转折/变化' },
+  { icon: '♫', color: '#6366f1', label: '愉悦/欢快' },
+];
+
+export const MOMENT_EMOJI_PRESETS: IconPreset[] = [
+  { icon: '😊', color: '#eab308', label: '开心' },
+  { icon: '😢', color: '#3b82f6', label: '悲伤' },
+  { icon: '😡', color: '#ef4444', label: '愤怒' },
+  { icon: '😱', color: '#a855f7', label: '恐惧/震惊' },
+  { icon: '🤩', color: '#f59e0b', label: '兴奋/期待' },
+  { icon: '😴', color: '#64748b', label: '无聊/沉闷' },
+  { icon: '🤔', color: '#f97316', label: '疑惑/思考' },
+  { icon: '🥰', color: '#ec4899', label: '喜爱/感动' },
+];
 
 export const COLOR_PRESETS = [
   '#8b5cf6', // 紫

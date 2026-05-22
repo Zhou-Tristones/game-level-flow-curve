@@ -1,4 +1,5 @@
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { MessageSquare } from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -19,9 +20,10 @@ interface EmotionAreaChartProps {
   height?: number | string;
   fixedTooltips?: boolean;
   showMoments?: boolean;
+  onMoveMoment?: (chartId: string, eventId: string, momentId: string, offsetMin: number, offsetSec: number) => void;
 }
 
-export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = false, showMoments = true }: EmotionAreaChartProps) {
+export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = false, showMoments = true, onMoveMoment }: EmotionAreaChartProps) {
   const points = useMemo(() => calculateCurvePoints(chart.events), [chart.events]);
   const referenceAreas = useMemo(() => calculateReferenceAreas(chart.events), [chart.events]);
   const totalDuration = useMemo(() => getTotalDuration(chart.events), [chart.events]);
@@ -68,6 +70,9 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
   const [hoveredMoment, setHoveredMoment] = useState<{ name: string; icon: string; color: string; time: string; image?: string } | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ index: number; x: number; startMouseX: number; startMomentX: number; eventStartX: number; eventEndX: number } | null>(null);
+  const chartPlotRef = useRef<HTMLDivElement>(null);
+  const [expandedComment, setExpandedComment] = useState<number | null>(null);
 
   const clearHoverTimer = () => {
     if (hoverTimerRef.current) {
@@ -99,6 +104,59 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
     setHoveredMoment(null);
   }, []);
 
+  const handleDragStart = useCallback((e: React.MouseEvent, index: number) => {
+    if (!onMoveMoment) return;
+    e.preventDefault();
+    const mp = momentPoints[index];
+    setHoveredMoment(null);
+    setDragging({
+      index,
+      x: mp.x,
+      startMouseX: e.clientX,
+      startMomentX: mp.x,
+      eventStartX: mp.eventStartX,
+      eventEndX: mp.eventStartX + mp.eventDuration,
+    });
+  }, [momentPoints, onMoveMoment]);
+
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    setDragging(prev => {
+      if (!prev || !chartPlotRef.current) return prev;
+      const rect = chartPlotRef.current.getBoundingClientRect();
+      const deltaPx = e.clientX - prev.startMouseX;
+      const deltaMin = (deltaPx / rect.width) * Math.max(totalDuration, 1);
+      const newX = Math.max(prev.eventStartX, Math.min(prev.eventEndX, prev.startMomentX + deltaMin));
+      return { ...prev, x: newX };
+    });
+  }, [totalDuration]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragging(prev => {
+      if (!prev || !onMoveMoment) return null;
+      const mp = momentPoints[prev.index];
+      const offset = prev.x - mp.eventStartX;
+      const offsetMin = Math.floor(offset);
+      const offsetSec = Math.round((offset - offsetMin) * 60);
+      onMoveMoment(chart.id, mp.eventId, mp.momentId, Math.max(0, offsetMin), Math.max(0, Math.min(59, offsetSec)));
+      return null;
+    });
+  }, [momentPoints, onMoveMoment, chart.id]);
+
+  // Attach global drag listeners
+  const draggingRef = useRef(dragging);
+  draggingRef.current = dragging;
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: MouseEvent) => handleDragMove(e);
+    const onUp = () => handleDragEnd();
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [dragging, handleDragMove, handleDragEnd]);
+
   return (
     <div className="flex items-stretch h-full min-h-0">
       {/* 竖排 Y 轴标签 */}
@@ -121,13 +179,15 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
           <div className="relative flex-[1] ml-[38px] mr-[16px] min-h-0">
             {momentPoints.map((mp, i) => {
               if (momentRows[i] !== 'above') return null;
+              const isDraggingThis = dragging?.index === i;
+              const displayX = isDraggingThis ? dragging!.x : mp.x;
               const xMax = Math.max(totalDuration, 1);
-              const leftPct = (mp.x / xMax) * 100;
+              const leftPct = (displayX / xMax) * 100;
               return (
                 <div
                   key={`above-moment-${i}`}
                   className="absolute transform -translate-x-1/2 pointer-events-auto"
-                  style={{ left: `${leftPct}%`, top: 4 }}
+                  style={{ left: `${leftPct}%`, bottom: 20 }}
                 >
                   <div className="flex flex-col items-center gap-1 bg-slate-800 border border-slate-600 rounded-lg p-1.5 shadow-lg" style={{ minWidth: 80 }}>
                     {mp.image && (
@@ -141,8 +201,20 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <span className="text-base" style={{ color: mp.color }}>{mp.icon}</span>
                       <span className="text-white text-xs font-medium">{mp.name}</span>
-                      <span className="text-[10px] text-slate-400">· {formatMinutesDisplay(mp.x)}</span>
+                      <span className="text-[10px] text-slate-400">· {formatMinutesDisplay(displayX)}</span>
+                      {mp.comment && (
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={() => setExpandedComment(expandedComment === i ? null : i)}
+                          className="text-[10px] text-slate-500 hover:text-slate-300"
+                        ><MessageSquare className="w-3 h-3" /></button>
+                      )}
                     </div>
+                    {expandedComment === i && mp.comment && (
+                      <div className="text-[10px] text-slate-400 whitespace-pre-wrap text-left border-t border-slate-700/50 pt-1">
+                        {mp.comment}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -205,15 +277,18 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                 stroke="none"
               />
             ))}
-            {showMoments && momentPoints.map((mp, i) => (
-              <ReferenceLine
-                key={`moment-line-${i}`}
-                x={mp.x}
-                stroke={mp.color}
-                strokeDasharray="4 3"
-                strokeWidth={1.5}
-              />
-            ))}
+            {showMoments && momentPoints.map((mp, i) => {
+              const lineX = dragging?.index === i ? dragging.x : mp.x;
+              return (
+                <ReferenceLine
+                  key={`moment-line-${i}`}
+                  x={lineX}
+                  stroke={mp.color}
+                  strokeDasharray="4 3"
+                  strokeWidth={1.5}
+                />
+              );
+            })}
             <Area
               type="monotone"
               dataKey="y"
@@ -229,20 +304,23 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
 
         {/* X-axis moment markers + tooltips */}
         {showMoments && totalDuration > 0 && momentPoints.length > 0 && (
-          <div className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 22, height: 1 }}>
+          <div ref={chartPlotRef} className="absolute left-[38px] right-[16px] pointer-events-none" style={{ bottom: 22, height: 1 }}>
             {momentPoints.map((mp, i) => {
+              const isDraggingThis = dragging?.index === i;
+              const displayX = isDraggingThis ? dragging!.x : mp.x;
               const xMax = Math.max(totalDuration, 1);
-              const leftPct = (mp.x / xMax) * 100;
-              const isHovered = hoveredMoment?.name === mp.name && hoveredMoment?.time === formatMinutesDisplay(mp.x);
+              const leftPct = (displayX / xMax) * 100;
+              const isHovered = !isDraggingThis && hoveredMoment?.name === mp.name && hoveredMoment?.time === formatMinutesDisplay(mp.x);
               return (
                 <div
                   key={`moment-marker-${i}`}
                   className="absolute pointer-events-auto"
                   style={{ left: `${leftPct}%`, bottom: 0 }}
-                  onMouseEnter={() => !fixedTooltips && handleMomentEnter(mp)}
-                  onMouseLeave={() => !fixedTooltips && handleMomentLeave()}
+                  onMouseEnter={() => !fixedTooltips && !dragging && handleMomentEnter(mp)}
+                  onMouseLeave={() => !fixedTooltips && !dragging && handleMomentLeave()}
+                  onMouseDown={(e) => handleDragStart(e, i)}
                 >
-                  <div className={`-translate-x-1/2 ${!fixedTooltips ? 'cursor-pointer' : ''} ${isHovered && !fixedTooltips ? 'scale-110' : ''} transition-transform`}>
+                  <div className={`-translate-x-1/2 ${!fixedTooltips ? 'cursor-pointer' : ''} ${!dragging && isHovered && !fixedTooltips ? 'scale-110' : ''} ${isDraggingThis ? 'scale-125' : ''} transition-transform select-none`}>
                     <div
                       className="text-xs leading-none font-medium"
                       style={{ color: mp.color }}
@@ -250,6 +328,13 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                       {mp.icon}
                     </div>
                   </div>
+                  {/* Drag info label */}
+                  {isDraggingThis && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 border border-purple-500 rounded-lg px-2 py-1 shadow-xl z-30 whitespace-nowrap">
+                      <span className="text-white text-xs font-medium">{mp.name}</span>
+                      <span className="text-[10px] text-slate-400 ml-1">· {formatMinutesDisplay(displayX)}</span>
+                    </div>
+                  )}
                   {/* Tooltip */}
                   {isHovered && !fixedTooltips && (
                     <div
@@ -263,6 +348,7 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                           <img
                             src={mp.image}
                             alt={mp.name}
+                            onMouseDown={(e) => e.stopPropagation()}
                             className="max-w-[200px] max-h-[150px] rounded object-contain cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all"
                             onClick={() => setLightboxImage(mp.image!)}
                           />
@@ -272,7 +358,19 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                         <span style={{ color: mp.color }}>{mp.icon}</span>
                         <span className="text-white text-xs font-medium">{mp.name}</span>
                         <span className="text-[10px] text-slate-400">· {formatMinutesDisplay(mp.x)}</span>
+                        {mp.comment && (
+                          <button
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => setExpandedComment(expandedComment === i ? null : i)}
+                            className="text-slate-500 hover:text-slate-300"
+                          ><MessageSquare className="w-3 h-3" /></button>
+                        )}
                       </div>
+                      {expandedComment === i && mp.comment && (
+                        <div className="mt-1 text-[10px] text-slate-400 whitespace-pre-wrap text-left border-t border-slate-700/50 pt-1">
+                          {mp.comment}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -311,8 +409,10 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
           <div className="relative flex-[1] ml-[38px] mr-[16px] min-h-0">
             {momentPoints.map((mp, i) => {
               if (momentRows[i] !== 'below') return null;
+              const isDraggingThis = dragging?.index === i;
+              const displayX = isDraggingThis ? dragging!.x : mp.x;
               const xMax = Math.max(totalDuration, 1);
-              const leftPct = (mp.x / xMax) * 100;
+              const leftPct = (displayX / xMax) * 100;
               const compact = momentPoints.some((_, j) => momentRows[j] === 'above');
               return (
                 <div
@@ -332,8 +432,20 @@ export default function EmotionAreaChart({ chart, height = 200, fixedTooltips = 
                     <div className={`flex items-center whitespace-nowrap ${compact ? 'gap-1' : 'gap-1.5'}`}>
                       <span className={compact ? 'text-base' : 'text-lg'} style={{ color: mp.color }}>{mp.icon}</span>
                       <span className={`text-white font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{mp.name}</span>
-                      <span className={`text-slate-400 ${compact ? 'text-[10px]' : 'text-xs'}`}>· {formatMinutesDisplay(mp.x)}</span>
+                      <span className={`text-slate-400 ${compact ? 'text-[10px]' : 'text-xs'}`}>· {formatMinutesDisplay(displayX)}</span>
+                      {mp.comment && (
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={() => setExpandedComment(expandedComment === i ? null : i)}
+                          className="text-[10px] text-slate-500 hover:text-slate-300"
+                        ><MessageSquare className="w-3 h-3" /></button>
+                      )}
                     </div>
+                    {expandedComment === i && mp.comment && (
+                      <div className="text-[10px] text-slate-400 max-w-[160px] whitespace-pre-wrap border-t border-slate-700/50 pt-1 mt-1">
+                        {mp.comment}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

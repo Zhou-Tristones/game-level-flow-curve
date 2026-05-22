@@ -15,21 +15,29 @@ export default function App() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：三个预设图表 */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-          {m.charts.map((chart) => (
-            <ChartCard
-              key={chart.id}
-              chart={chart}
-              isSelected={chart.id === m.selectedChartId}
-              isZoomed={chart.id === zoomedChartId}
-              hasClipboard={!!m.clipboard}
-              onSelect={() => m.selectChart(chart.id)}
-              onToggleZoom={() => setZoomedChartId(zoomedChartId === chart.id ? null : chart.id)}
-              onCopy={() => m.copyEvents(chart.id)}
-              onPaste={() => m.pasteEvents(chart.id)}
-              isOverLimit={m.isOverLimit(chart.id)}
-            />
-          ))}
+        <div className={`flex-1 overflow-y-auto p-4 flex flex-col gap-3 ${zoomedChartId ? 'justify-center' : ''}`}>
+          {m.charts.map((chart) => {
+            const hidden = zoomedChartId && chart.id !== zoomedChartId;
+            return (
+              <div key={chart.id} className={`flex flex-col min-h-0 ${hidden ? 'hidden' : 'flex-1'}`}>
+                <ChartCard
+                  chart={chart}
+                  isSelected={chart.id === m.selectedChartId}
+                  isZoomed={chart.id === zoomedChartId}
+                  hasClipboard={!!m.clipboard}
+                  onSelect={() => m.selectChart(chart.id)}
+                  onToggleZoom={() => setZoomedChartId(zoomedChartId === chart.id ? null : chart.id)}
+                  onCopy={() => m.copyEvents(chart.id)}
+                  onPaste={() => m.pasteEvents(chart.id)}
+                  isOverLimit={m.isOverLimit(chart.id)}
+                  onMoveMoment={(chartId, eventId, momentId, offsetMin, offsetSec) => {
+                    m.updateMoment(chartId, eventId, momentId, 'offsetMin', offsetMin);
+                    m.updateMoment(chartId, eventId, momentId, 'offsetSec', offsetSec);
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* 右侧：事件编辑面板 */}

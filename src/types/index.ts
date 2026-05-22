@@ -6,6 +6,7 @@ export interface SpecialMoment {
   offsetMin: number;
   offsetSec: number;
   image?: string;
+  comment?: string;
 }
 
 export interface GameEvent {

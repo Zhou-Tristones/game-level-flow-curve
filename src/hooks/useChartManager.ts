@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ChartInstance, GameEvent, SpecialMoment } from '../types';
-import { createDefaultCharts, generateId } from '../constants';
+import { createDefaultCharts, generateId, MOMENT_ICON_PRESETS } from '../constants';
 import { getTotalDuration, getOverLimitEventIds, toMinutes } from '../utils/curveData';
 
 export interface ChartManager {
@@ -208,8 +208,7 @@ export function useChartManager(): ChartManager {
             moments: [...(evt.moments || []), {
               id: generateId(),
               name: '特殊时刻',
-              icon: '★',
-              color: '#f59e0b',
+              ...MOMENT_ICON_PRESETS[Math.floor(Math.random() * MOMENT_ICON_PRESETS.length)],
               offsetMin: 0,
               offsetSec: 0,
             }],

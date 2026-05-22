@@ -13,6 +13,7 @@ interface ChartCardProps {
   onCopy: () => void;
   onPaste: () => void;
   isOverLimit: boolean;
+  onMoveMoment?: (chartId: string, eventId: string, momentId: string, offsetMin: number, offsetSec: number) => void;
 }
 
 export default function ChartCard({
@@ -25,15 +26,14 @@ export default function ChartCard({
   onCopy,
   onPaste,
   isOverLimit,
+  onMoveMoment,
 }: ChartCardProps) {
   const [showMoments, setShowMoments] = useState(true);
 
   return (
     <div
       onClick={onSelect}
-      className={`flex flex-col rounded-xl border-2 overflow-hidden transition-all cursor-pointer min-h-0 ${
-        isZoomed ? 'flex-[4]' : 'flex-[1]'
-      } ${
+      className={`flex flex-col rounded-xl border-2 overflow-hidden transition-all cursor-pointer flex-1 min-h-0 ${
         isSelected
           ? 'border-purple-500 bg-slate-900 shadow-lg shadow-purple-500/10'
           : 'border-slate-800 bg-slate-900/70 hover:border-slate-600'
@@ -87,7 +87,7 @@ export default function ChartCard({
       </div>
 
       <div className="flex-1 min-h-0">
-        <EmotionAreaChart chart={chart} height="100%" fixedTooltips={isZoomed} showMoments={showMoments} />
+        <EmotionAreaChart chart={chart} height="100%" fixedTooltips={isZoomed} showMoments={showMoments} onMoveMoment={onMoveMoment} />
       </div>
     </div>
   );
